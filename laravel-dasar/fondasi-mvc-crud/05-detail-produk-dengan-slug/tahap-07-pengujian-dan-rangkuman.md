@@ -10,7 +10,7 @@ Kita akan memastikan:
 - Produk baru mendapatkan slug otomatis.
 - Dua nama produk yang sama tetap memiliki slug berbeda.
 - Tautan detail memakai slug.
-- Route model binding menemukan produk yang benar.
+- Method `show()` menemukan produk yang benar berdasarkan slug.
 - Slug yang tidak ada menghasilkan halaman 404.
 - Fitur edit dan hapus tetap bekerja.
 
@@ -30,7 +30,7 @@ Fitur slug bekerja dengan cara yang mirip:
 1. Produk dibuat.
 2. Laravel membuat slug yang unik.
 3. Tautan mengirim slug melalui URL.
-4. Route model binding mencari slug.
+4. Method show() menerima slug dan mencari produk.
 5. Halaman detail produk yang benar tampil.
 
 ## Persiapan Pengujian
@@ -49,7 +49,7 @@ Periksa route produk:
 php artisan route:list --path=products
 ```
 
-Pastikan route detail bernama `products.show` tersedia dan tidak ada dua route
+Pastikan route detail memakai parameter `{slug}` dan tidak ada dua route
 detail yang saling bertabrakan.
 
 Jalankan aplikasi:
@@ -108,7 +108,7 @@ Berhasil jika kedua produk tersimpan dan slug-nya berbeda.
 
 Pada halaman daftar produk:
 
-1. Klik tombol **Detail** pada produk ID `15`.
+1. Klik tombol **Lihat** pada produk ID `15`.
 2. Perhatikan URL pada browser.
 
 Hasil yang diharapkan:
@@ -121,7 +121,7 @@ Berhasil jika:
 
 - URL memakai slug, bukan hanya ID.
 - Halaman menampilkan produk ID `15`.
-- Nama, harga, stok, dan informasi lainnya sesuai.
+- Nama, harga, stok, kategori, dan informasi lainnya sesuai.
 
 ## Pengujian 4: Membuka URL Secara Langsung
 
@@ -197,7 +197,7 @@ Admin mengisi nama produk
 Product disimpan dan mendapat ID
         |
         v
-Str::slug(name) + ID
+Str::slug(name) + '-' + ID
         |
         v
 Slug disimpan ke tabel products
@@ -209,13 +209,10 @@ Blade membuat tautan dari $product->slug
 Browser membuka /products/nama-produk-id
         |
         v
-Route {product:slug} menerima slug
+Route {slug} menerima slug
         |
         v
-Laravel mencari Product berdasarkan kolom slug
-        |
-        v
-Controller menerima Product $product
+Controller mencari Product dengan where('slug', $slug)->firstOrFail()
         |
         v
 View menampilkan detail produk
@@ -239,37 +236,57 @@ $table->unique('slug');
 
 ### Model `Product`
 
-Kolom `slug` ditambahkan ke `$fillable` agar dapat disimpan melalui Eloquent.
+Kolom `slug` ditambahkan ke `$fillable` agar dapat disimpan melalui Eloquent:
+
+```php
+protected $fillable = [
+    'name',
+    'slug',
+    'price',
+    'description',
+    'category_id',
+    'image',
+    'stock',
+];
+```
 
 ### `ProductController`
 
 Laravel membuat slug dari nama dan ID:
 
 ```php
-'slug' => Str::slug($product->name) . '-' . $product->id
+$validated['slug'] = Str::slug($validated['name']) . '-' . $product->id;
 ```
 
-Method `show()` menerima model secara langsung:
+Method `show()` menerima `$slug` dan mencari produk berdasarkan kolom slug:
 
 ```php
-public function show(Product $product): View
+public function show($slug)
+{
+    $product = Product::with('category')
+        ->where('slug', $slug)
+        ->firstOrFail();
+
+    return view('products.show', compact('product'));
+}
 ```
 
 ### Route
 
-Route detail mencari produk berdasarkan kolom slug:
+Route detail menerima slug alih-alih ID:
 
 ```php
-Route::get('/products/{product:slug}', [ProductController::class, 'show'])
-    ->name('products.show');
+Route::get('/products/{slug}', [ProductController::class, 'show']);
 ```
+
+Route lain (edit, update, destroy) tetap memakai `{id}`.
 
 ### View Daftar Produk
 
-Tautan detail mengirim nilai slug:
+Tautan detail mengirim nilai slug dengan URL biasa:
 
 ```blade
-route('products.show', ['product' => $product->slug])
+<a href="/products/{{ $product->slug }}">Lihat</a>
 ```
 
 ## Masalah dan Tempat Pemeriksaannya
@@ -278,10 +295,9 @@ route('products.show', ['product' => $product->slug])
 |---------------------------------|----------------------------------------------|
 | Slug kosong                     | Method `store()` dan `$fillable`             |
 | Slug sama                       | Akhiran ID dan migration indeks unik         |
-| Klik Detail menghasilkan 404    | Nilai `$product->slug` pada tautan            |
-| `products.show` tidak ditemukan | Nama route di `routes/web.php`               |
-| Produk salah                    | Parameter `{product:slug}` dan method `show()` |
-| Edit atau hapus gagal           | Pastikan route tersebut masih memakai ID     |
+| Klik Lihat menghasilkan 404     | Nilai `$product->slug` pada tautan            |
+| Produk salah                    | Parameter `{slug}` di route dan method `show()` |
+| Edit atau hapus gagal           | Pastikan route tersebut masih memakai `{id}` |
 
 ## Checklist Akhir
 
@@ -290,9 +306,9 @@ route('products.show', ['product' => $product->slug])
 - [ ] Setiap produk memiliki slug yang berbeda.
 - [ ] Database memiliki indeks unik untuk kolom `slug`.
 - [ ] Produk lama sudah memiliki slug.
-- [ ] Route detail memakai `{product:slug}`.
-- [ ] Method `show()` menerima `Product $product`.
-- [ ] Tautan detail mengirim `$product->slug`.
+- [ ] Route detail memakai `{slug}`.
+- [ ] Method `show()` menerima `$slug` dan memakai `where('slug', ...)->firstOrFail()`.
+- [ ] Tautan detail mengirim `$product->slug` dengan URL biasa.
 - [ ] URL slug menampilkan produk yang benar.
 - [ ] Slug yang tidak ada menghasilkan 404.
 - [ ] Edit, update, dan hapus tetap bekerja.
@@ -300,7 +316,7 @@ route('products.show', ['product' => $product->slug])
 ## Inti Seluruh Materi
 
 > Slug membuat URL detail produk lebih mudah dibaca. Laravel membuat slug dari
-> nama produk, database menjaganya tetap unik, dan route model binding mencari
+> nama produk, database menjaganya tetap unik, dan method `show()` mencari
 > produk berdasarkan slug tersebut.
 
 Perubahan akhirnya:

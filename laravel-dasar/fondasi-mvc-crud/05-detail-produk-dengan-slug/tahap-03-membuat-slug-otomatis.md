@@ -79,21 +79,26 @@ Buka:
 app/Models/Product.php
 ```
 
-Tambahkan `slug` ke dalam daftar `$fillable` yang sudah ada:
+Tambahkan `slug` ke dalam daftar `$fillable` yang sudah ada.
+
+> **Catatan:** Struktur `$fillable` di bawah ini sudah mencakup kolom dari
+> **Materi 2** (`description`, `price`, `stock`), **Materi 3** (`image`),
+> dan **Materi 4** (`category_id`). Kita hanya menambah `'slug'` di urutan
+> setelah `'name'`.
 
 ```diff
 protected $fillable = [
     'name',
 +    'slug',
-    'description',
     'price',
+    'description',
+    'category_id',
+    'image',
     'stock',
 ];
 ```
 
-Tanda `+` hanya menunjukkan baris baru, jadi tidak perlu diketik. Jika
-`$fillable` milikmu juga memiliki `gambar` atau `category_id`, pertahankan
-kolom-kolom tersebut.
+Tanda `+` hanya menunjukkan baris baru, jadi tidak perlu diketik.
 
 `$fillable` adalah daftar kolom yang boleh diisi melalui
 `Product::create()` atau `$product->update()`.
@@ -119,57 +124,54 @@ Baris tersebut membuat class `Str` tersedia di dalam controller.
 
 ## Langkah 3: Membuat Slug Saat Produk Baru Disimpan
 
-Cari method `store()`. Jika controller menggunakan
-`StoreProductRequest`, ubah bagian penyimpanannya menjadi:
+Cari method `store()` di `ProductController`. Method ini sudah berisi
+validasi dari **Materi 4 (Tahap 9)** yang mencakup `name`, `price`, `stock`,
+`description`, `image`, dan `category_id`. Kita hanya menambah **satu baris**
+untuk membuat slug.
 
 ```php
-public function store(StoreProductRequest $request): RedirectResponse
+public function store(Request $request)
 {
-    $data = $request->validated();
-    $data['slug'] = Str::slug($data['name']);
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
 
-    Product::create($data);
+        // Dari Materi 3 (upload gambar):
+        'image'       => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
 
-    return redirect('/products')
-        ->with('success', 'Produk berhasil ditambahkan.');
+        // Dari Materi 4 (kategori):
+        'category_id' => 'required|exists:categories,id',
+    ]);
+
+    // Dari Materi 3: simpan gambar dulu
+    $validated['image'] = $request->file('image')->store('products', 'public');
+
+    // BARU di Materi 5: buat slug otomatis
+    $validated['slug'] = Str::slug($validated['name']);
+
+    Product::create($validated);
+
+    return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
 }
 ```
 
 Bagian baru yang penting adalah:
 
 ```php
-$data['slug'] = Str::slug($data['name']);
+$validated['slug'] = Str::slug($validated['name']);
 ```
 
 Alurnya:
 
-1. `$request->validated()` mengambil data form yang sudah lolos validasi.
-2. `$data['name']` berisi nama produk.
+1. `$request->validate(...)` memvalidasi data form (sama seperti Materi 4).
+2. `$validated['name']` berisi nama produk.
 3. `Str::slug(...)` mengubah nama menjadi slug.
-4. Hasilnya dimasukkan ke `$data['slug']`.
-5. `Product::create($data)` menyimpan semua data ke database.
+4. Hasilnya dimasukkan ke `$validated['slug']`.
+5. `Product::create($validated)` menyimpan semua data ke database.
 
 Slug tidak perlu ditambahkan ke form karena Laravel membuatnya sendiri.
-
-## Jika Validasi Masih Langsung di Controller
-
-Jika method `store()` masih memakai `$request->validate()`, gunakan pola yang
-sama:
-
-```php
-$data = $request->validate([
-    'name' => 'required|string|max:255',
-    'description' => 'nullable|string',
-    'price' => 'required|integer|min:0',
-    'stock' => 'required|integer|min:0',
-]);
-
-$data['slug'] = Str::slug($data['name']);
-
-Product::create($data);
-```
-
-Pilih kode yang sesuai dengan project-mu. Jangan memakai kedua versi sekaligus.
 
 ## Langkah 4: Mengisi Slug Produk Lama
 

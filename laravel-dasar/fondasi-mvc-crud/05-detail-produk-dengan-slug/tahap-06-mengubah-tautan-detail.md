@@ -30,7 +30,7 @@ benar.
 Route detail sekarang memakai:
 
 ```php
-{product:slug}
+{slug}
 ```
 
 Artinya, Laravel menganggap bagian terakhir URL sebagai slug.
@@ -57,10 +57,11 @@ Buka:
 resources/views/products/index.blade.php
 ```
 
-Cari tautan **Detail** yang masih memakai ID:
+Cari tautan **Detail** yang masih memakai ID. Di **Materi 4 (Tahap 10 dan 11)**,
+tautan ini ditulis dengan URL biasa:
 
 ```blade
-<a href="/products/{{ $product->id }}">Detail</a>
+<a href="/products/{{ $product->id }}">Lihat</a>
 ```
 
 ## Langkah 2: Mengganti ID dengan Slug
@@ -68,12 +69,10 @@ Cari tautan **Detail** yang masih memakai ID:
 Ubah tautan tersebut menjadi:
 
 ```blade
-<a href="{{ route('products.show', ['product' => $product->slug]) }}">
-    Detail
-</a>
+<a href="/products/{{ $product->slug }}">Lihat</a>
 ```
 
-Sekarang nilai yang dikirim ke parameter `product` adalah:
+Sekarang nilai yang dikirim ke URL adalah:
 
 ```blade
 $product->slug
@@ -85,62 +84,31 @@ Bukan lagi:
 $product->id
 ```
 
-## Memahami `route()`
-
-Kode berikut:
-
-```blade
-route('products.show', ['product' => $product->slug])
-```
-
-memiliki arti:
-
-| Bagian                    | Arti                                      |
-|---------------------------|-------------------------------------------|
-| `products.show`           | Nama route detail dari Tahap 5            |
-| `product`                 | Nama parameter pada `{product:slug}`      |
-| `$product->slug`          | Nilai slug yang dimasukkan ke dalam URL   |
-
-Jika nilai slug adalah:
-
-```text
-kaos-hitam-7
-```
-
-Laravel menghasilkan URL:
-
-```text
-http://127.0.0.1:8000/products/kaos-hitam-7
-```
-
-Kita memakai nama route agar URL tidak ditulis manual di banyak tempat.
+> **Catatan:** Kita tetap memakai URL biasa (`/products/{{ ... }}`) seperti
+> di **Materi 1 sampai 4**, bukan named route. Ini konsisten dengan pola
+> yang sudah dipakai sepanjang materi.
 
 ## Contoh pada Kolom Aksi
 
-Jika halaman daftar memiliki tombol **Detail**, **Edit**, dan **Hapus**, bagian
-aksinya dapat terlihat seperti ini:
+Di **Materi 4 (Tahap 11)**, kolom aksi pada halaman daftar produk memiliki
+tautan untuk filter kategori, lihat, edit, dan hapus. Kita hanya mengubah
+tautan **Lihat/Detail** agar memakai slug.
 
 ```blade
 <td>
-    <a href="{{ route('products.show', ['product' => $product->slug]) }}">
-        Detail
-    </a>
-
-    <a href="/products/{{ $product->id }}/edit">
-        Edit
-    </a>
-
-    <form action="/products/{{ $product->id }}" method="POST">
+    <a href="/products/{{ $product->slug }}">Lihat</a>
+    <a href="/products/{{ $product->id }}/edit">Edit</a>
+    <form action="/products/{{ $product->id }}" method="POST" style="display:inline;">
         @csrf
         @method('DELETE')
-        <button type="submit">Hapus</button>
+        <button type="submit" onclick="return confirm('Hapus produk ini?')">Hapus</button>
     </form>
 </td>
 ```
 
 Perhatikan:
 
-- **Detail** memakai slug.
+- **Lihat/Detail** memakai slug.
 - **Edit** tetap memakai ID.
 - **Hapus** tetap memakai ID.
 
@@ -154,29 +122,12 @@ diklik.
 Ubah tautannya dengan pola yang sama:
 
 ```blade
-<a href="{{ route('products.show', ['product' => $product->slug]) }}">
+<a href="/products/{{ $product->slug }}">
     {{ $product->name }}
 </a>
 ```
 
 Lakukan perubahan pada setiap tautan yang memang menuju halaman detail produk.
-
-## Kenapa Tidak Mengirim `$product` Langsung?
-
-Kode berikut terlihat lebih pendek:
-
-```blade
-route('products.show', $product)
-```
-
-Namun, model `Product` kita masih memakai ID sebagai route key bawaan. Kode
-tersebut dapat menghasilkan URL dengan ID.
-
-Karena route detail secara khusus memakai slug, kirim slug secara jelas:
-
-```blade
-route('products.show', ['product' => $product->slug])
-```
 
 ## Langkah 3: Menguji Tautan
 
@@ -186,9 +137,9 @@ route('products.show', ['product' => $product->slug])
    http://127.0.0.1:8000/products
    ```
 
-2. Arahkan mouse ke tombol **Detail**.
+2. Arahkan mouse ke tombol **Lihat** atau **Detail**.
 3. Pastikan alamat yang terlihat memakai slug, bukan hanya ID.
-4. Klik **Detail**.
+4. Klik **Lihat**.
 5. Pastikan halaman produk yang benar tampil.
 
 Contoh hasil:
@@ -207,40 +158,27 @@ dengan ID.
 Salah:
 
 ```blade
-route('products.show', ['product' => $product->id])
+<a href="/products/{{ $product->id }}">Lihat</a>
 ```
 
 Benar:
 
 ```blade
-route('products.show', ['product' => $product->slug])
-```
-
-### Nama Route Tidak Ditemukan
-
-Jika muncul error:
-
-```text
-Route [products.show] not defined.
-```
-
-Pastikan route detail pada `routes/web.php` memiliki:
-
-```php
-->name('products.show');
+<a href="/products/{{ $product->slug }}">Lihat</a>
 ```
 
 ### Slug Kosong
 
-Jika URL tidak lengkap, periksa kolom `slug` pada tabel `products`. Pastikan
-langkah pengisian slug produk lama pada Tahap 4 sudah dijalankan.
+Jika URL tidak lengkap (misalnya `/products/` tanpa slug), periksa kolom
+`slug` pada tabel `products`. Pastikan langkah pengisian slug produk lama pada
+Tahap 4 sudah dijalankan.
 
 ## Checklist Tahap 6
 
 - [ ] Tautan detail tidak lagi memakai `$product->id`.
 - [ ] Tautan detail memakai `$product->slug`.
-- [ ] Nama route yang dipakai adalah `products.show`.
-- [ ] Klik **Detail** menghasilkan URL slug.
+- [ ] Tautan detail memakai URL biasa: `/products/{{ $product->slug }}`.
+- [ ] Klik **Lihat** menghasilkan URL slug.
 - [ ] Halaman menampilkan produk yang benar.
 - [ ] Tautan edit dan hapus tetap bekerja dengan ID.
 

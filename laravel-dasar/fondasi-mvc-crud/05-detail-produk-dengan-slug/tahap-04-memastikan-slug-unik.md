@@ -18,7 +18,7 @@ Di tahap ini kita akan:
 2. Memperbaiki slug produk lama.
 3. Menambahkan aturan unik pada database.
 
-Kita belum menggunakan slug untuk route model binding.
+Kita belum menggunakan slug untuk route detail.
 
 ## Apa Arti Unik?
 
@@ -90,16 +90,32 @@ use Illuminate\Support\Str;
 Kemudian ubah method `store()` menjadi:
 
 ```php
-public function store(StoreProductRequest $request): RedirectResponse
+public function store(Request $request)
 {
-    $product = Product::create($request->validated());
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
 
+        // Dari Materi 3 (upload gambar):
+        'image'       => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+
+        // Dari Materi 4 (kategori):
+        'category_id' => 'required|exists:categories,id',
+    ]);
+
+    // Dari Materi 3: simpan gambar dulu
+    $validated['image'] = $request->file('image')->store('products', 'public');
+
+    $product = Product::create($validated);
+
+    // BARU di Materi 5: slug memakai ID agar unik
     $product->update([
         'slug' => Str::slug($product->name) . '-' . $product->id,
     ]);
 
-    return redirect('/products')
-        ->with('success', 'Produk berhasil ditambahkan.');
+    return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
 }
 ```
 
@@ -123,28 +139,6 @@ Hasil: kaos-hitam-7
 Kolom `slug` masih `nullable`, sehingga produk boleh disimpan sebentar tanpa
 slug sebelum langsung diperbarui pada baris berikutnya.
 
-## Jika Validasi Masih Langsung di Controller
-
-Jika belum memakai `StoreProductRequest`, simpan hasil validasi terlebih
-dahulu:
-
-```php
-$data = $request->validate([
-    'name' => 'required|string|max:255',
-    'description' => 'nullable|string',
-    'price' => 'required|integer|min:0',
-    'stock' => 'required|integer|min:0',
-]);
-
-$product = Product::create($data);
-
-$product->update([
-    'slug' => Str::slug($product->name) . '-' . $product->id,
-]);
-```
-
-Pilih versi yang sesuai dengan project-mu. Jangan gunakan keduanya sekaligus.
-
 ## Langkah 2: Memperbarui Slug Saat Nama Produk Diubah
 
 Jika nama produk berubah, slug juga perlu diperbarui.
@@ -152,17 +146,37 @@ Jika nama produk berubah, slug juga perlu diperbarui.
 Ubah method `update()` menjadi:
 
 ```php
-public function update(
-    StoreProductRequest $request,
-    Product $product
-): RedirectResponse {
-    $data = $request->validated();
-    $data['slug'] = Str::slug($data['name']) . '-' . $product->id;
+public function update(Request $request, $id)
+{
+    $product = Product::findOrFail($id);
 
-    $product->update($data);
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
 
-    return redirect('/products')
-        ->with('success', 'Produk berhasil diupdate.');
+        // Di update, image bisa nullable (boleh tidak diganti)
+        'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+
+        // Dari Materi 4 (kategori):
+        'category_id' => 'required|exists:categories,id',
+    ]);
+
+    // Dari Materi 3: kalau ada file baru, hapus gambar lama lalu simpan baru
+    if ($request->hasFile('image')) {
+        if ($product->image && Storage::disk('public')->exists($product->image)) {
+            Storage::disk('public')->delete($product->image);
+        }
+        $validated['image'] = $request->file('image')->store('products', 'public');
+    }
+
+    // BARU di Materi 5: perbarui slug saat nama berubah
+    $validated['slug'] = Str::slug($validated['name']) . '-' . $product->id;
+
+    $product->update($validated);
+
+    return redirect('/products/' . $product->id)->with('success', 'Produk berhasil diperbarui.');
 }
 ```
 
@@ -296,7 +310,7 @@ digunakan pada URL.
 
 ## Pertanyaan Lanjutan
 
-Apakah kamu ingin lanjut ke **Tahap 5: menggunakan route model binding
-berdasarkan slug**?
+Apakah kamu ingin lanjut ke **Tahap 5: mengubah route detail untuk
+menerima slug**?
 
 Ketik **"lanjut"** jika sudah siap.

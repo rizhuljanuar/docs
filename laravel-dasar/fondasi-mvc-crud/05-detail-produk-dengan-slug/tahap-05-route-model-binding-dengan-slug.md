@@ -1,4 +1,4 @@
-# Tahap 5: Route Model Binding Berdasarkan Slug
+# Tahap 5: Mengubah Route Detail untuk Menerima Slug
 
 ## Tujuan Tahap Ini
 
@@ -15,27 +15,13 @@ Sesudah: /products/kaos-hitam-7
 Di tahap ini kita hanya mengubah route detail dan method `show()`. Tautan pada
 halaman daftar akan diubah pada tahap berikutnya.
 
-## Apa Itu Route Model Binding?
+## Apa Itu Pencarian Berdasarkan Slug?
 
-**Route model binding** adalah fitur Laravel yang mengambil data dari URL,
-mencarinya di database, lalu memberikan objek model langsung kepada
-controller.
+Pada materi-materi sebelumnya, route detail memakai parameter `{id}` dan
+method `show($id)` mencari produk dengan `Product::findOrFail($id)`.
 
-Tanpa route model binding, kita perlu mencari produk sendiri:
-
-```php
-$product = Product::findOrFail($id);
-```
-
-Dengan route model binding, Laravel melakukan pencarian tersebut secara
-otomatis:
-
-```php
-public function show(Product $product)
-{
-    // $product sudah berisi produk yang ditemukan.
-}
-```
+Sekarang kita ingin route detail menerima **slug** alih-alih ID, lalu mencari
+produk berdasarkan kolom `slug`.
 
 ## Analogi Sederhana: Petugas Perpustakaan
 
@@ -51,36 +37,11 @@ tersebut kepadamu.
 Dalam Laravel:
 
 - Slug pada URL adalah kode buku.
-- Route model binding adalah petugas perpustakaan.
+- Method `show()` adalah petugas perpustakaan.
 - Tabel `products` adalah katalog.
 - `$product` adalah produk yang sudah ditemukan.
 
-Controller tidak perlu mencari ulang produk tersebut.
-
-## Mengenal `{product:slug}`
-
-Perhatikan parameter route berikut:
-
-```php
-{product:slug}
-```
-
-Artinya:
-
-- `product` adalah nama parameter route.
-- `slug` adalah kolom yang dipakai untuk mencari produk.
-
-Jika URL-nya:
-
-```text
-/products/kaos-hitam-7
-```
-
-Laravel akan menjalankan pencarian seperti:
-
-```text
-Cari satu produk dengan slug = kaos-hitam-7
-```
+Controller mencari produk berdasarkan slug, lalu mengirimkannya ke view.
 
 ## Langkah 1: Mengubah Route Detail
 
@@ -90,43 +51,11 @@ Buka:
 routes/web.php
 ```
 
-Jika project-mu memakai `Route::resource`, ubah:
+> **Catatan:** Sepanjang **Materi 1 sampai 4**, kita menulis route produk
+> **satu per satu** (bukan `Route::resource`). Kita tetap konsisten dengan
+> pola itu. Hanya route detail yang diubah.
 
-```php
-Route::resource('products', ProductController::class);
-```
-
-menjadi:
-
-```php
-Route::resource('products', ProductController::class)->except('show');
-
-Route::get('/products/{product:slug}', [ProductController::class, 'show'])
-    ->name('products.show');
-```
-
-### Kenapa `show` Dikeluarkan?
-
-`Route::resource` biasanya membuat route detail berikut:
-
-```text
-/products/{product}
-```
-
-Route tersebut mencari produk berdasarkan ID. Kita mengeluarkan `show`, lalu
-membuat route detail sendiri dengan `{product:slug}`.
-
-Route lain tetap bekerja seperti sebelumnya:
-
-- Edit tetap memakai ID.
-- Update tetap memakai ID.
-- Hapus tetap memakai ID.
-
-Hanya halaman detail yang memakai slug.
-
-## Jika Route Ditulis Satu per Satu
-
-Jika project-mu tidak memakai `Route::resource`, cari route detail lama:
+Cari route detail lama:
 
 ```php
 Route::get('/products/{id}', [ProductController::class, 'show']);
@@ -135,12 +64,51 @@ Route::get('/products/{id}', [ProductController::class, 'show']);
 Ganti menjadi:
 
 ```php
-Route::get('/products/{product:slug}', [ProductController::class, 'show'])
-    ->name('products.show');
+Route::get('/products/{slug}', [ProductController::class, 'show']);
 ```
 
-Gunakan salah satu cara sesuai isi project-mu. Jangan mendaftarkan kedua versi
-route detail sekaligus.
+Nama parameter berubah dari `{id}` menjadi `{slug}`. Ini menandakan bahwa
+bagian URL tersebut sekarang dianggap sebagai slug.
+
+### Kenapa Tidak Pakai `Route::resource`?
+
+Di **Materi 1 (Tahap 5 dan 6)** kita menulis route produk satu per satu dan
+tetap memakai pola itu sampai **Materi 4**. Pola ini lebih eksplisit dan
+konsisten dengan apa yang sudah kamu pelajari.
+
+Route lain tetap bekerja seperti sebelumnya:
+
+- Edit tetap memakai ID: `/products/{id}/edit`.
+- Update tetap memakai ID: PUT `/products/{id}`.
+- Hapus tetap memakai ID: DELETE `/products/{id}`.
+
+Hanya halaman detail yang memakai slug.
+
+### Susunan Route Setelah Perubahan
+
+```php
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CategoryController;
+
+// Route produk
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/create', [ProductController::class, 'create']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::get('/products/{slug}', [ProductController::class, 'show']);
+Route::get('/products/{id}/edit', [ProductController::class, 'edit']);
+Route::put('/products/{id}', [ProductController::class, 'update']);
+Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+
+// Route kategori (dari Materi 4)
+Route::resource('categories', CategoryController::class);
+```
+
+> **Urutan route penting!** `/products/create` harus ditulis **sebelum**
+> `/products/{slug}`. Kalau tidak, Laravel menganggap kata `create` sebagai
+> nilai slug. Ini sudah kamu pelajari di **Materi 1 (Tahap 5)**.
 
 ## Langkah 2: Mengubah Method `show()`
 
@@ -150,52 +118,47 @@ Buka:
 app/Http/Controllers/ProductController.php
 ```
 
-Jika method `show()` masih menerima ID:
+Method `show()` di **Materi 4 (Tahap 10)** masih menerima `$id` dan memakai
+`findOrFail($id)` dengan eager loading `with('category')`:
 
 ```php
 public function show($id)
 {
-    $product = Product::findOrFail($id);
-
+    $product = Product::with('category')->findOrFail($id);
     return view('products.show', compact('product'));
 }
 ```
 
-ubah menjadi:
+Ubah menjadi pencarian berdasarkan kolom `slug`:
 
 ```php
-public function show(Product $product): View
+public function show($slug)
 {
+    $product = Product::with('category')
+        ->where('slug', $slug)
+        ->firstOrFail();
+
     return view('products.show', compact('product'));
 }
 ```
 
-Pastikan import berikut tersedia di bagian atas controller:
+### Penjelasan Perubahan
 
-```php
-use App\Models\Product;
-use Illuminate\View\View;
-```
+| Bagian                | Sebelum (Materi 4)             | Sesudah (Materi 5)                     |
+|-----------------------|--------------------------------|----------------------------------------|
+| Parameter             | `$id`                          | `$slug`                                |
+| Pencarian             | `findOrFail($id)`              | `where('slug', $slug)->firstOrFail()`  |
+| Eager loading         | `with('category')`             | Tetap `with('category')` (dari Materi 4) |
 
-Laravel sekarang mengisi `$product` secara otomatis berdasarkan slug dari
-URL.
+Kita tetap memakai pola `findOrFail` / `firstOrFail` (bukan route model
+binding `Product $product`) supaya konsisten dengan **Materi 1 sampai 4**
+yang selalu memakai parameter `$id` dan pencarian manual.
 
-## Kenapa Namanya Harus Sama?
+### Kenapa `firstOrFail()`?
 
-Nama parameter route:
-
-```php
-{product:slug}
-```
-
-harus cocok dengan nama parameter controller:
-
-```php
-Product $product
-```
-
-Keduanya menggunakan nama `product`. Type `Product` memberi tahu Laravel bahwa
-data harus dicari melalui model `Product`.
+`->firstOrFail()` sama dengan `->first()`, tapi jika produk tidak ditemukan,
+Laravel otomatis menampilkan halaman **404 Not Found**. Ini setara dengan
+`findOrFail($id)` yang sudah kamu pakai sejak **Materi 1 (Tahap 10)**.
 
 ## Alur yang Terjadi
 
@@ -209,13 +172,11 @@ Laravel melakukan langkah berikut:
 
 ```text
 1. Route menerima slug "kaos-hitam-7"
-2. Laravel mencari Product dengan kolom slug tersebut
-3. Produk yang ditemukan diberikan ke method show()
-4. Controller mengirim produk ke view products.show
+2. Method show($slug) dipanggil dengan $slug = "kaos-hitam-7"
+3. Product::where('slug', $slug)->firstOrFail() mencari produk
+4. Produk yang ditemukan dikirim ke view products.show
 5. Halaman detail ditampilkan
 ```
-
-Kita tidak lagi menulis `findOrFail()` secara manual.
 
 ## Apa yang Terjadi Jika Slug Tidak Ada?
 
@@ -225,7 +186,8 @@ Jika pengguna membuka:
 /products/produk-tidak-ada-999
 ```
 
-Laravel tidak menemukan produknya dan otomatis menampilkan halaman:
+Laravel tidak menemukan produknya (karena `firstOrFail()` gagal) dan
+otomatis menampilkan halaman:
 
 ```text
 404 Not Found
@@ -244,12 +206,8 @@ php artisan route:list --path=products
 Cari route detail dengan bentuk:
 
 ```text
-GET|HEAD  products/{product}
+GET|HEAD  products/{slug}
 ```
-
-Pada kode route, parameter tersebut memakai `{product:slug}`. Tampilan
-`route:list` pada beberapa versi Laravel mungkin hanya menampilkan
-`{product}`.
 
 Pastikan hanya ada satu route `GET` untuk detail produk.
 
@@ -276,29 +234,21 @@ Hasil yang diharapkan:
 Tautan **Detail** pada halaman daftar mungkin masih memakai ID. Itu normal
 karena tautannya baru akan kita ubah pada Tahap 6.
 
-## Kenapa Tidak Mengubah `getRouteKeyName()`?
-
-Model `Product` juga bisa diatur agar semua route memakai slug melalui
-`getRouteKeyName()`. Namun, cara tersebut ikut mengubah route edit, update,
-dan hapus.
-
-Pada materi ini kita memakai `{product:slug}` karena kebutuhannya hanya halaman
-detail. Perubahannya lebih kecil dan fitur CRUD lain tetap bekerja.
-
 ## Checklist Tahap 5
 
-- [ ] Route detail lama sudah diganti.
-- [ ] Route detail memakai `{product:slug}`.
-- [ ] Method `show()` menerima `Product $product`.
-- [ ] `Product::findOrFail($id)` sudah tidak dipakai di method `show()`.
+- [ ] Route detail lama `{id}` sudah diganti menjadi `{slug}`.
+- [ ] Method `show()` menerima parameter `$slug`.
+- [ ] Method `show()` memakai `where('slug', $slug)->firstOrFail()`.
+- [ ] Method `show()` tetap memakai `with('category')` dari Materi 4.
 - [ ] URL dengan slug menampilkan produk yang benar.
 - [ ] Slug yang tidak ada menghasilkan halaman 404.
-- [ ] Route edit, update, dan hapus tetap bekerja.
+- [ ] Route edit, update, dan hapus tetap bekerja dengan ID.
 
 ## Inti Tahap 5
 
-> `{product:slug}` meminta Laravel mencari model `Product` berdasarkan kolom
-> `slug`, lalu memberikannya langsung kepada method `show()`.
+> Route detail sekarang menerima `{slug}`, dan method `show()` mencari produk
+> dengan `where('slug', $slug)->firstOrFail()`. Pola ini konsisten dengan
+> materi sebelumnya yang memakai parameter dan pencarian manual.
 
 Sekarang halaman detail sudah bisa dibuka melalui URL slug. Namun, tautan dari
 halaman daftar masih perlu diperbarui.
