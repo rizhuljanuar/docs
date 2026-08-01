@@ -22,7 +22,7 @@ Tahap ini berisi:
 ## 2. Latihan Soal (Kerjakan Sendiri)
 
 ### Soal 1 — Aturan Validasi
-Tulis aturan validasi untuk field `gambar` dengan syarat:
+Tulis aturan validasi untuk field `image` dengan syarat:
 - Wajib diisi.
 - Harus gambar.
 - Format hanya `jpg`, `png`, atau `webp`.
@@ -34,14 +34,14 @@ gambar tidak muncul di halaman daftar produk. Sebutkan **3 kemungkinan penyebab*
 
 ### Soal 3 — Penyimpanan
 Jelaskan dengan kata-kata sendiri: apa yang dikembalikan oleh
-`$request->file('gambar')->store('produk', 'public')`, dan apa yang kamu
+`$request->file('image')->store('products', 'public')`, dan apa yang kamu
 lakukan dengan nilai tersebut?
 
 ### Soal 4 — Tampilan Blade
 Lengkapi tag `<img>` berikut supaya menampilkan gambar produk dengan aman:
 
-```php
-<img src="{{ ??????????? }}" alt="{{ $produk->nama }}" width="200">
+```blade
+<img src="{{ ??????????? }}" alt="{{ $product->name }}" width="200">
 ```
 
 ### Soal 5 — Storage Abstraction
@@ -57,25 +57,25 @@ saja dari kode aplikasi yang perlu diubah**? (form? controller? blade? migration
 
 ### Jawaban 1
 ```php
-'gambar' => ['required', 'image', 'mimes:jpg,png,webp', 'max:1536'],
+'image' => ['required', 'image', 'mimes:jpg,png,webp', 'max:1536'],
 ```
 > 1.5 MB = 1536 KB (karena `max:` dalam kilobyte).
 
 ### Jawaban 2
 Kemungkinan penyebab:
 1. **Belum jalankan `php artisan storage:link`** → symlink `public/storage` belum ada.
-2. **Salah disk**: pakai `store('produk')` tanpa argumen `'public'`, jadi file
+2. **Salah disk**: pakai `store('products')` tanpa argumen `'public'`, jadi file
    masuk ke disk `local` (private), tidak bisa diakses browser.
 3. **Symlink rusak / dihapus**: jalankan ulang `php artisan storage:link`.
 
 ### Jawaban 3
-`store('produk', 'public')` mengembalikan **path relatif terhadap disk**,
-misalnya `"produk/aB3xK9pQ.jpg"`. Path ini saya simpan ke kolom `gambar`
+`store('products', 'public')` mengembalikan **path relatif terhadap disk**,
+misalnya `"products/aB3xK9pQ.jpg"`. Path ini saya simpan ke kolom `image`
 di database, karena database hanya perlu tahu **lokasi** file, bukan isi file-nya.
 
 ### Jawaban 4
-```php
-<img src="{{ Storage::url($produk->gambar) }}" alt="{{ $produk->nama }}" width="200">
+```blade
+<img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }}" width="200">
 ```
 
 ### Jawaban 5
@@ -102,21 +102,26 @@ tersisa** → storage lama-lama penuh dengan file sampah.
 Cara manual (paling sederhana, ponytail friendly):
 
 ```php
-public function destroy(Produk $produk)
+public function destroy($id)
 {
-    if ($produk->gambar && Storage::disk('public')->exists($produk->gambar)) {
-        Storage::disk('public')->delete($produk->gambar);
+    $product = Product::findOrFail($id);
+
+    if ($product->image && Storage::disk('public')->exists($product->image)) {
+        Storage::disk('public')->delete($product->image);
     }
 
-    $produk->delete();
+    $product->delete();
 
-    return redirect()->route('produk.index')->with('success', 'Produk dihapus.');
+    return redirect('/products')->with('success', 'Produk dihapus.');
 }
 ```
 
 Logika:
-- Cek `gambar` tidak null **dan** file-nya benar-benar ada (`exists`).
+- Cek `image` tidak null **dan** file-nya benar-benar ada (`exists`).
 - Baru hapus file-nya (`delete`), lalu hapus record DB.
+
+> Catatan: struktur method `destroy($id)` mengikuti **Materi 1 (Tahap 13)**.
+  Hanya tambahan blok `if` untuk hapus file gambar sebelum `$product->delete()`.
 
 ---
 
@@ -126,30 +131,41 @@ Saat user mengganti gambar produk, **gambar lama harus dihapus** supaya tidak
 menumpuk di storage.
 
 ```php
-public function update(Request $request, Produk $produk)
+public function update(Request $request, $id)
 {
-    $data = $request->validate([
-        'nama'   => ['required', 'string', 'max:100'],
-        'gambar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+    $product = Product::findOrFail($id);
+
+    $validated = $request->validate([
+        'name'        => ['required', 'min:3'],
+        'price'       => ['required', 'numeric', 'min:0'],
+        'stock'       => ['required', 'integer', 'min:0'],
+        'description' => ['nullable', 'min:10'],
+
+        // Di update, image biasanya nullable (boleh tidak diganti)
+        'image'       => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
     ]);
 
-    if ($request->hasFile('gambar')) {
+    if ($request->hasFile('image')) {
         // Hapus gambar lama kalau ada
-        if ($produk->gambar && Storage::disk('public')->exists($produk->gambar)) {
-            Storage::disk('public')->delete($produk->gambar);
+        if ($product->image && Storage::disk('public')->exists($product->image)) {
+            Storage::disk('public')->delete($product->image);
         }
 
         // Simpan gambar baru
-        $data['gambar'] = $request->file('gambar')->store('produk', 'public');
+        $validated['image'] = $request->file('image')->store('products', 'public');
     }
 
-    $produk->update($data);
+    $product->update($validated);
 
-    return redirect()->route('produk.index')->with('success', 'Produk diperbarui.');
+    return redirect('/products/' . $product->id)->with('success', 'Produk diperbarui.');
 }
 ```
 
-Catatan: di update, `gambar` biasanya **`nullable`** (boleh tidak diganti).
+Catatan:
+- Struktur `update($id)` mengikuti **Materi 1 (Tahap 12)**.
+- Aturan untuk `name`, `price`, `stock`, `description` sama seperti **Materi 2**.
+- Di update, `image` biasanya **`nullable`** (boleh tidak diganti).
+- Redirect tetap ke halaman detail produk (`/products/{id}`), sesuai Materi 1.
 
 ---
 
@@ -176,25 +192,25 @@ kosong / 422). Solusinya:
 
 Kalau satu produk butuh banyak gambar (galeri), input file pakai array:
 
-```php
-<input type="file" name="gambar[]" multiple>
+```blade
+<input type="file" name="images[]" multiple>
 ```
 
 Validasi pakai wildcard `.*`:
 
 ```php
-'gambar'   => ['required', 'array'],
-'gambar.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+'images'   => ['required', 'array'],
+'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
 ```
 
 Simpan dengan loop:
 
 ```php
 $paths = [];
-foreach ($request->file('gambar') as $file) {
-    $paths[] = $file->store('produk', 'public');
+foreach ($request->file('images') as $file) {
+    $paths[] = $file->store('products', 'public');
 }
-// simpan $paths ke tabel terpisah: produk_gambar (produk_id, path)
+// simpan $paths ke tabel terpisah: product_images (product_id, path)
 ```
 
 > **Ponytail:** Untuk pemula, jangan langsung lompat ke kasus ini. Pahami
@@ -210,7 +226,7 @@ Centang (di kepala) yang sudah kamu pahami:
 - [ ] Saya bisa menulis aturan validasi: `image`, `mimes:`, `max:`.
 - [ ] Saya paham beda `storage/app/public` dengan `public/storage` (symlink).
 - [ ] Saya sudah pernah menjalankan `php artisan storage:link`.
-- [ ] Saya tahu `store('produk', 'public')` mengembalikan path, bukan URL.
+- [ ] Saya tahu `store('products', 'public')` mengembalikan path, bukan URL.
 - [ ] Saya bisa tampilkan gambar dengan `Storage::url()` di Blade.
 - [ ] Saya tahu cara hapus gambar saat produk dihapus / diupdate.
 - [ ] Saya paham kenapa pindah ke S3 tidak butuh ubah kode aplikasi.

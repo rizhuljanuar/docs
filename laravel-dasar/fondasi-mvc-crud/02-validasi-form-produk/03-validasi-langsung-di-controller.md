@@ -29,27 +29,40 @@ Buka file ini di editor kamu:
 app/Http/Controllers/ProductController.php
 ```
 
-Cari method `store()`. Di materi CRUD sebelumnya, kemungkinan besar
+Cari method `store()`. Di materi **Materi 1: CRUD Data Produk** (Tahap 9),
 bentuknya seperti ini:
 
 ```php
 public function store(Request $request)
 {
-    Product::create($request->all());
+    $validated = $request->validate([
+        'name'        => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'price'       => 'required|integer|min:0',
+        'stock'       => 'required|integer|min:0',
+    ]);
 
-    return redirect('/products');
+    Product::create($validated);
+
+    return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
 }
 ```
 
-**Arti kode di atas (sebagai pengingat):**
-- `store(Request $request)` — method ini menerima data dari form (lewat `$request`).
-- `Product::create($request->all())` — simpan semua data ke tabel `products`.
-- `redirect('/products')` — setelah simpan, kembali ke halaman daftar produk.
+**Catatan**: Di materi sebelumnya, kamu **sudah** menulis validasi dasar.
+Sekarang kita akan **perbaiki** aturannya supaya lebih lengkap dan
+konsisten dengan yang akan kita pakai di FormRequest nanti.
 
-**Masalah**: Di kode di atas **tidak ada validasi**. User bisa input
-apa saja, termasuk nama kosong atau harga minus.
+**Aturan lama vs aturan baru:**
 
-Sekarang kita **tambahkan validasi**.
+| Field         | Aturan Lama (Materi 1)              | Aturan Baru (Materi 2)                  |
+| ------------- | ----------------------------------- | --------------------------------------- |
+| `name`        | `required\|string\|max:255`         | `required` (bisa ditambah `min:3`)      |
+| `price`       | `required\|integer\|min:0`          | `required\|numeric\|min:0` (boleh desimal) |
+| `stock`       | `required\|integer\|min:0`          | `required\|integer\|min:0` (tetap)      |
+| `description` | `nullable\|string`                  | `nullable\|min:10` (kalau diisi, minimal 10) |
+
+Sekarang kita **tulis ulang** validasi supaya lebih sesuai untuk
+pembelajaran modul ini.
 
 ---
 
@@ -60,14 +73,14 @@ Ubah method `store()` kamu jadi seperti ini:
 ```php
 public function store(Request $request)
 {
-    $request->validate([
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ]);
 
-    Product::create($request->all());
+    Product::create($validated);
 
     return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
 }
@@ -101,26 +114,31 @@ dijalankan** kalau ada yang gagal validasi.
 
 ---
 
-### Baris 2: Aturan untuk field nama
+### Baris 2: Aturan untuk field name
 
 ```php
-'nama' => 'required',
+'name' => 'required|min:3',
 ```
 
-**Fungsinya**: Field `nama` **wajib diisi** (tidak boleh kosong).
+**Fungsinya**: Field `name` **wajib diisi** (tidak boleh kosong)
+dan **minimal 3 karakter**.
 
 **Aturan `required`** artinya:
 - User **harus** mengisi field ini.
-- Kalau dikosongkan → validasi gagal → muncul error "The nama field is required."
+- Kalau dikosongkan → validasi gagal → muncul error "The name field is required."
 
-**Analogi**: Kasir bilang "Maaf, nama produk wajib diisi."
+**Aturan `min:3`** artinya:
+- Nama produk minimal 3 huruf.
+- Kalau user input nama cuma 1-2 huruf (misal "AB"), validasi gagal.
+
+**Analogi**: Kasir bilang "Nama produk wajib diisi, dan minimal 3 huruf."
 
 ---
 
-### Baris 3: Aturan untuk field harga
+### Baris 3: Aturan untuk field price
 
 ```php
-'harga' => 'required|numeric|min:0',
+'price' => 'required|numeric|min:0',
 ```
 
 Perhatikan ada **3 aturan** sekaligus, dipisahkan oleh tanda `|` (pipe).
@@ -133,6 +151,11 @@ Urutan artinya:
 | `numeric`  | Isinya harus angka (boleh desimal, misal `15000.50`).            |
 | `min:0`    | Tidak boleh lebih kecil dari 0 (artinya tidak boleh minus).       |
 
+**Catatan**: Di **Materi 1** kamu pakai `integer` untuk price (karena
+di migration kolomnya `integer`). Sekarang kita pakai `numeric` agar
+boleh desimal. Kalau kamu mau tetap konsisten pakai bilangan bulat
+(Rupiah tidak punya pecahan koma), kamu boleh tetap pakai `integer`.
+
 **Kenapa pakai `min:0`?** Karena `numeric` saja masih mengizinkan
 angka minus. Kita tambahkan `min:0` supaya harga minimal adalah 0.
 
@@ -140,13 +163,13 @@ angka minus. Kita tambahkan `min:0` supaya harga minimal adalah 0.
 
 ---
 
-### Baris 4: Aturan untuk field stok
+### Baris 4: Aturan untuk field stock
 
 ```php
-'stok' => 'required|integer|min:0',
+'stock' => 'required|integer|min:0',
 ```
 
-Mirip dengan harga, tapi ada satu perbedaan:
+Sama persis dengan aturan price di **Materi 1** (tidak berubah):
 
 | Aturan    | Arti                                                                |
 |-----------|---------------------------------------------------------------------|
@@ -163,10 +186,10 @@ pecahan, tidak boleh minus."
 
 ---
 
-### Baris 5: Aturan untuk field deskripsi
+### Baris 5: Aturan untuk field description
 
 ```php
-'deskripsi' => 'nullable|min:10',
+'description' => 'nullable|min:10',
 ```
 
 | Aturan     | Arti                                                                |
@@ -189,12 +212,12 @@ minimal 10 huruf ya, supaya informatif."
 
 ## 4. Ringkasan Aturan Validasi yang Sudah Kamu Tulis
 
-| Field      | Aturan                          | Maksud                              |
-|------------|---------------------------------|-------------------------------------|
-| nama       | `required`                      | Wajib diisi                         |
-| harga      | `required|numeric|min:0`        | Wajib, angka, tidak minus           |
-| stok       | `required|integer|min:0`        | Wajib, bulat, tidak minus           |
-| deskripsi  | `nullable|min:10`               | Boleh kosong, kalau diisi minimal 10 |
+| Field         | Aturan                          | Maksud                              |
+|---------------|---------------------------------|-------------------------------------|
+| name          | `required\|min:3`               | Wajib diisi, minimal 3 karakter     |
+| price         | `required\|numeric\|min:0`      | Wajib, angka, tidak minus           |
+| stock         | `required\|integer\|min:0`      | Wajib, bulat, tidak minus           |
+| description   | `nullable\|min:10`              | Boleh kosong, kalau diisi minimal 10 |
 
 ---
 
@@ -205,18 +228,23 @@ minimal 10 huruf ya, supaya informatif."
 
 public function store(Request $request)
 {
-    $request->validate([
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ]);
 
-    Product::create($request->all());
+    Product::create($validated);
 
     return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
 }
 ```
+
+> **Catatan**: Bandingkan dengan **Materi 1 (Tahap 9)**. Di sana kamu
+> pakai `$validated` (bukan `$request->all()`), dan itu sudah benar.
+> Sekarang kita **perkuat** aturannya dengan menambah `min:3` untuk
+> name dan `min:10` untuk description.
 
 ---
 
@@ -226,29 +254,36 @@ Method `update()` juga butuh validasi karena user bisa **mengubah
 data produk lewat form edit**. Tanpa validasi, user bisa
 mengedit nama produk jadi kosong atau harga jadi minus.
 
-Buka method `update()` kamu, tambahkan validasi yang sama:
+Buka method `update()` kamu (yang sudah dibuat di **Materi 1, Tahap 12**),
+tambahkan validasi yang sama:
 
 ```php
 public function update(Request $request, $id)
 {
-    $request->validate([
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+    $product = Product::findOrFail($id);
+
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ]);
 
-    $product = Product::findOrFail($id);
-    $product->update($request->all());
+    $product->update($validated);
 
-    return redirect('/products')->with('success', 'Produk berhasil diupdate.');
+    return redirect('/products/' . $product->id)->with('success', 'Produk berhasil diperbarui.');
 }
 ```
 
-**Catatan**: Kalau method `update()` kamu sudah punya struktur agak
-beda (misalnya pakai `Route::model` binding), **tidak masalah**. Yang
-penting: **letakkan `$request->validate(...)` di baris pertama method
-sebelum proses update dilakukan**.
+**Catatan**:
+- Di **Materi 1 (Tahap 12)**, redirect setelah update mengarah ke
+  halaman **detail produk** (`/products/{id}`), bukan ke daftar produk.
+  Pola itu kita pertahankan di sini.
+- Kalau method `update()` kamu sudah punya struktur agak beda
+  (misalnya pakai route model binding `Product $product`), **tidak
+  masalah**. Yang penting: **letakkan `$request->validate(...)` di
+  baris pertama method sebelum proses update dilakukan**, dan simpan
+  hasilnya ke `$validated`.
 
 ---
 
@@ -284,12 +319,12 @@ http://localhost:8000/products/create
 
 Isi form begini:
 
-| Field      | Isi yang salah         | Harusnya                          |
-|------------|------------------------|-----------------------------------|
-| nama       | (kosongkan)            | Harus muncul error                |
-| harga      | `-5000`                | Harus muncul error "min 0"        |
-| stok       | `2.5`                  | Harus muncul error "harus integer"|
-| deskripsi  | `ok`                   | Harus muncul error "min 10"       |
+| Field         | Isi yang salah         | Harusnya                          |
+|---------------|------------------------|-----------------------------------|
+| name          | (kosongkan)            | Harus muncul error                |
+| price         | `-5000`                | Harus muncul error "min 0"        |
+| stock         | `2.5`                  | Harus muncul error "harus integer"|
+| description   | `ok`                   | Harus muncul error "min 10"       |
 
 Klik tombol **Simpan**.
 
@@ -312,12 +347,12 @@ Cek database atau halaman daftar produk. Produk dengan data salah
 
 Isi form begini:
 
-| Field      | Isi yang benar         |
-|------------|------------------------|
-| nama       | `Buku Tulis`           |
-| harga      | `5000`                 |
-| stok       | `20`                   |
-| deskripsi  | `Buku tulis 50 lembar` |
+| Field         | Isi yang benar         |
+|---------------|------------------------|
+| name          | `Buku Tulis`           |
+| price         | `5000`                 |
+| stock         | `20`                   |
+| description   | `Buku tulis 50 lembar` |
 
 Klik **Simpan**.
 
@@ -361,12 +396,12 @@ Kita akan bahas ini **lebih lengkap dan rapi** di Tahap 5.
 
 Supaya makin paham, coba hal berikut sebelum lanjut Tahap 4:
 
-1. **Hapus salah satu aturan**, misalnya hapus `min:0` di harga.
-   Lalu coba input `harga = -100`. Apa yang terjadi? Kenapa?
-2. **Ubah `min:10` jadi `min:50`** di deskripsi. Lalu coba input
+1. **Hapus salah satu aturan**, misalnya hapus `min:0` di price.
+   Lalu coba input `price = -100`. Apa yang terjadi? Kenapa?
+2. **Ubah `min:10` jadi `min:50`** di description. Lalu coba input
    deskripsi pendek. Apa yang terjadi?
-3. **Coba aturan baru**: tambahkan `'nama' => 'required|min:3'`
-   di field nama. Coba input nama dengan 1 huruf. Apa yang terjadi?
+3. **Coba aturan baru**: tambahkan `'name' => 'required|min:3|max:255'`
+   di field name. Coba input name dengan 1 huruf. Apa yang terjadi?
 
 Latihan ini bikin kamu **merasakan sendiri** bagaimana aturan
 validasi mempengaruhi data yang diterima atau ditolak.

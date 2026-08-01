@@ -27,23 +27,46 @@ pintu" — file yang lewat harus yang benar.
 Form upload file **wajib** punya atribut `enctype="multipart/form-data"`.
 Kalau tidak, file tidak akan terkirim ke server.
 
-`resources/views/produk/create.blade.php`:
+Form ini adalah kelanjutan dari form tambah produk yang sudah kamu buat di
+**Materi 1 (Tahap 8)** dan **Materi 2 (Tahap 5)**. Kita hanya menambahkan
+satu input baru: **field `image`** untuk upload gambar.
 
-```php
-<form action="{{ route('produk.store') }}" method="POST" enctype="multipart/form-data">
+`resources/views/products/create.blade.php`:
+
+```blade
+<form action="/products" method="POST" enctype="multipart/form-data">
     @csrf
 
-    <label for="nama">Nama Produk</label>
-    <input type="text" name="nama" id="nama" value="{{ old('nama') }}">
-    @error('nama') <span style="color:red">{{ $message }}</span> @enderror
+    <div class="form-group">
+        <label for="name">Nama Produk</label>
+        <input type="text" name="name" id="name" value="{{ old('name') }}">
+        @error('name') <span style="color:red">{{ $message }}</span> @enderror
+    </div>
 
-    <br>
+    <div class="form-group">
+        <label for="price">Harga (Rp)</label>
+        <input type="number" name="price" id="price" min="0" value="{{ old('price') }}">
+        @error('price') <span style="color:red">{{ $message }}</span> @enderror
+    </div>
 
-    <label for="gambar">Gambar Produk</label>
-    <input type="file" name="gambar" id="gambar">
-    @error('gambar') <span style="color:red">{{ $message }}</span> @enderror
+    <div class="form-group">
+        <label for="stock">Stok</label>
+        <input type="number" name="stock" id="stock" min="0" value="{{ old('stock') }}">
+        @error('stock') <span style="color:red">{{ $message }}</span> @enderror
+    </div>
 
-    <br>
+    <div class="form-group">
+        <label for="description">Deskripsi</label>
+        <textarea name="description" id="description">{{ old('description') }}</textarea>
+        @error('description') <span style="color:red">{{ $message }}</span> @enderror
+    </div>
+
+    {{-- FIELD BARU: input untuk upload gambar --}}
+    <div class="form-group">
+        <label for="image">Gambar Produk</label>
+        <input type="file" name="image" id="image">
+        @error('image') <span style="color:red">{{ $message }}</span> @enderror
+    </div>
 
     <button type="submit">Simpan</button>
 </form>
@@ -52,35 +75,50 @@ Kalau tidak, file tidak akan terkirim ke server.
 Hal penting:
 
 - `enctype="multipart/form-data"` → **wajib** untuk upload file.
-- `@csrf` → proteksi bawaan Laravel (tidak ada hubungan langsung dengan file,
-  tapi wajib di setiap form POST).
-- `<input type="file">` → input khusus untuk memilih file.
-- `@error('gambar')` → otomatis menampilkan pesan error untuk field `gambar`.
+  Tambahkan atribut ini di tag `<form>` (di materi sebelumnya belum ada karena
+  belum ada upload file).
+- `@csrf` → proteksi bawaan Laravel (sudah ada dari materi sebelumnya).
+- Field `name`, `price`, `stock`, `description` tetap sama seperti materi
+  sebelumnya, lengkap dengan `old()` dan `@error()`.
+- `<input type="file" name="image">` → input khusus untuk memilih file
+  (ini yang baru di materi upload gambar).
+- `@error('image')` → otomatis menampilkan pesan error untuk field `image`.
 
 ---
 
 ## 3. Langkah 2: Aturan Validasi untuk File Gambar
 
-Di controller, kita pakai method `validate()` bawaan Laravel.
+Di controller, kita pakai method `validate()` bawaan Laravel. Ini melanjutkan
+controller `ProductController` yang sudah kamu buat di **Materi 1** dan
+**Materi 2**.
 
-`app/Http/Controllers/ProdukController.php`:
+`app/Http/Controllers/ProductController.php`:
 
 ```php
 public function store(Request $request)
 {
-    $data = $request->validate([
-        'nama'   => ['required', 'string', 'max:100'],
-        'gambar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+    $validated = $request->validate([
+        'name'        => ['required', 'min:3'],
+        'price'       => ['required', 'numeric', 'min:0'],
+        'stock'       => ['required', 'integer', 'min:0'],
+        'description' => ['nullable', 'min:10'],
+
+        // FIELD BARU untuk upload gambar:
+        'image'       => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
     ]);
 
     // di tahap 4: simpan file ke storage
     // di tahap 5: simpan data ke database
 
-    return redirect()->back()->with('success', 'Data valid!');
+    return redirect('/products')->with('success', 'Data valid!');
 }
 ```
 
-Mari kita bedah **aturan untuk `gambar`** satu per satu:
+Catatan: aturan untuk `name`, `price`, `stock`, `description` **sama persis**
+dengan yang kamu tulis di **Materi 2 (Tahap 3 dan Tahap 4)**. Yang baru di
+materi ini hanyalah baris `'image' => [...]`.
+
+Mari kita bedah **aturan untuk `image`** satu per satu:
 
 | Rule       | Arti                                                                   |
 | ---------- | ---------------------------------------------------------------------- |
@@ -109,8 +147,8 @@ karena alasan keamanan atau desain). Maka tambahkan `mimes:`.
 Secara default Laravel sudah punya pesan dalam bahasa Inggris:
 
 ```
-The gambar must be an image.
-The gambar may not be greater than 2048 kilobytes.
+The image must be an image.
+The image may not be greater than 2048 kilobytes.
 ```
 
 Untuk membuat pesan dalam bahasa Indonesia, ubah di
@@ -128,8 +166,11 @@ return [
         'string'  => ':attribute tidak boleh lebih dari :max karakter.',
     ],
     'attributes' => [
-        'nama'   => 'Nama produk',
-        'gambar' => 'Gambar produk',
+        'name'        => 'Nama produk',
+        'price'       => 'Harga',
+        'stock'       => 'Stok',
+        'description' => 'Deskripsi',
+        'image'       => 'Gambar produk',
     ],
 ];
 ```
@@ -184,11 +225,14 @@ kita bekerja. Tinggal tahap 4: menyimpan file yang sudah lolos.
 ## 7. Ringkasan Tahap 3
 
 - Form upload file **wajib** `enctype="multipart/form-data"`.
-- Input pakai `<input type="file" name="gambar">`.
-- Aturan minimal: `'gambar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']`.
+  Form tambah produk sekarang punya field `name`, `price`, `stock`,
+  `description` (dari materi sebelumnya) **plus** field baru `image`.
+- Input pakai `<input type="file" name="image">`.
+- Aturan minimal: `'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']`.
+  Aturan untuk field lain tetap sama seperti di **Materi 2**.
 - `max:` dalam **kilobyte**. `max:2048` = 2 MB.
 - Laravel cek **MIME type dari isi file**, bukan cuma ekstensi (aman dari pemalsuan).
-- Pakai `@error('gambar')` di Blade untuk tampilkan pesan error.
+- Pakai `@error('image')` di Blade untuk tampilkan pesan error.
 - Custom bahasa Indonesia lewat `lang/id/validation.php`.
 
 Belum ada penyimpanan file — itu ada di **tahap 4**.

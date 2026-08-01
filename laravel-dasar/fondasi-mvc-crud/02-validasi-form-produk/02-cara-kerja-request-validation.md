@@ -56,12 +56,13 @@ Di Laravel, peran-peran ini punya nama resmi:
 ## 2. Alur Asli di Laravel (Step by Step)
 
 Sekarang kita ganti analogi jadi **istilah asli Laravel**, tetap pakai
-contoh **produk** (nama, harga, stok, deskripsi).
+contoh **produk** (`name`, `price`, `stock`, `description` yang sudah
+dibuat di **Materi 1: CRUD Data Produk**).
 
 ```
 1. User buka halaman form tambah produk
        ↓
-2. User isi: nama="Buku", harga=-5000, stok="", deskripsi="bagus"
+2. User isi: name="Buku", price=-5000, stock="", description="bagus"
        ↓
 3. User klik tombol "Simpan"
        ↓
@@ -103,10 +104,10 @@ public function store(Request $request)
 {
     // ↓↓↓ VALIDASI DI SINI (cara A: langsung di controller)
     $request->validate([
-        'nama'     => 'required',
-        'harga'    => 'required|numeric|min:0',
-        'stok'     => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+        'name'        => 'required',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ]);
 
     // baru di sini data disimpan ke database
@@ -155,10 +156,10 @@ Di dalam `StoreProductRequest.php`, kamu isi **satu method** bernama
 public function rules()
 {
     return [
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+        'name'        => 'required',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ];
 }
 ```
@@ -195,7 +196,7 @@ perlu** memanggil `$request->validate()` lagi.
 
 Ini bagian yang sering bikin bingung pemula, jadi perhatikan baik-baik.
 
-Saat Laravel mendeteksi data **tidak valid** (misal harga = -5000),
+Saat Laravel mendeteksi data **tidak valid** (misal price = -5000),
 secara default Laravel **otomatis** melakukan hal berikut:
 
 1. **Menghentikan eksekusi** method `store()`.

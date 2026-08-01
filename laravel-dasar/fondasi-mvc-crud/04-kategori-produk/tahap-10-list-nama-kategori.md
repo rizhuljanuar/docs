@@ -128,9 +128,9 @@ Ubah menjadi:
         <td>Rp {{ number_format($product->price, 0, ',', '.') }}</td>
         <td>{{ $product->category?->name ?? '-' }}</td>
         <td>
-            <a href="{{ route('products.show', $product) }}">Lihat</a>
-            <a href="{{ route('products.edit', $product) }}">Edit</a>
-            <form action="{{ route('products.destroy', $product) }}" method="POST" style="display:inline;">
+            <a href="/products/{{ $product->id }}">Lihat</a>
+            <a href="/products/{{ $product->id }}/edit">Edit</a>
+            <form action="/products/{{ $product->id }}" method="POST" style="display:inline;">
                 @csrf
                 @method('DELETE')
                 <button type="submit" onclick="return confirm('Hapus produk ini?')">Hapus</button>
@@ -216,20 +216,11 @@ Buka `resources/views/products/show.blade.php`. Tampilkan kategori di halaman de
 <p><strong>Kategori:</strong> {{ $product->category?->name ?? '-' }}</p>
 <p><strong>Deskripsi:</strong> {{ $product->description }}</p>
 
-<a href="{{ route('products.index') }}">Kembali</a>
+<a href="/products">Kembali</a>
 ```
 
-Jangan lupa di method `show()` ProductController, tambahkan eager loading:
-
-```php
-public function show(Product $product)
-{
-    $product->load('category');
-    return view('products.show', compact('product'));
-}
-```
-
-Atau alternatif pakai `with` saat ambil data:
+Jangan lupa di method `show()` ProductController, tambahkan eager loading.
+Struktur `show($id)` mengikuti **Materi 1 (Tahap 10)**:
 
 ```php
 public function show($id)
@@ -238,6 +229,10 @@ public function show($id)
     return view('products.show', compact('product'));
 }
 ```
+
+> Catatan: method `show($id)` memakai `findOrFail` (sama seperti Materi 1
+> Tahap 10), bukan route model binding `Product $product`. Kita hanya
+> menambahkan `with('category')` untuk eager loading kategori.
 
 `$product->load(...)` di route model binding sama saja dengan `with(...)`, cuma dipanggil setelah objek diambil.
 

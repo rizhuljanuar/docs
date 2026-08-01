@@ -44,6 +44,10 @@ Tapi kita tidak ingin menulis setiap `<option>` manual. Kita ingin **otomatis di
 
 Buka file `app/Http/Controllers/ProductController.php`. Di method `create()` dan `edit()`, kirim data kategori ke view.
 
+> **Catatan:** Struktur controller ini mengikuti **Materi 1, 2, dan 3**.
+> Kita tetap memakai parameter `$id` (bukan route model binding) dan URL
+> biasa seperti `/products` (bukan named route), supaya konsisten.
+
 ### Method `create()`
 
 ```php
@@ -57,8 +61,9 @@ public function create()
 ### Method `edit()`
 
 ```php
-public function edit(Product $product)
+public function edit($id)
 {
+    $product = Product::findOrFail($id);
     $categories = Category::orderBy('name')->get();
     return view('products.edit', compact('categories', 'product'));
 }
@@ -72,6 +77,7 @@ Penjelasan:
 | `->get()`                    | Eksekusi query, kembalikan collection                           |
 | `compact('categories')`      | Kirim variabel `$categories` ke view                            |
 | `compact('categories', 'product')` | Kirim dua variabel ke view (untuk edit)                  |
+| `Product::findOrFail($id)`   | Cari produk berdasarkan ID (sama seperti Materi 1 Tahap 11)     |
 
 Kenapa kirim variabel `$categories` ke view? Supaya di form kita bisa looping daftar kategori untuk bikin `<option>`.
 
@@ -83,45 +89,70 @@ use App\Models\Category;
 
 ## Langkah 2: Tambah Validasi `category_id` di `store()` dan `update()`
 
-Buka method `store()` di ProductController:
+Buka method `store()` di ProductController. Aturan untuk `name`, `price`,
+`stock`, `description`, dan `image` **tetap sama persis** seperti di Materi 2
+dan 3. Kita hanya **menambah satu baris** baru: `'category_id' => ...`.
 
 ```php
 public function store(Request $request)
 {
     $validated = $request->validate([
-        'name'        => 'required|string|max:255',
+        'name'        => 'required|min:3',
         'price'       => 'required|numeric|min:0',
-        'description' => 'nullable|string',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
+
+        // Dari Materi 3 (upload gambar):
+        'image'       => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+
+        // TAMBAHAN BARU di Materi 4:
         'category_id' => 'required|exists:categories,id',
     ]);
 
+    // Dari Materi 3: simpan gambar dulu
+    $validated['image'] = $request->file('image')->store('products', 'public');
+
     Product::create($validated);
 
-    return redirect()->route('products.index')
-                     ->with('success', 'Produk berhasil ditambahkan.');
+    return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
 }
 ```
 
 Lakukan hal sama di method `update()`:
 
 ```php
-public function update(Request $request, Product $product)
+public function update(Request $request, $id)
 {
+    $product = Product::findOrFail($id);
+
     $validated = $request->validate([
-        'name'        => 'required|string|max:255',
+        'name'        => 'required|min:3',
         'price'       => 'required|numeric|min:0',
-        'description' => 'nullable|string',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
+
+        // Di update, image bisa nullable (boleh tidak diganti)
+        'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+
+        // TAMBAHAN BARU di Materi 4:
         'category_id' => 'required|exists:categories,id',
     ]);
 
+    // Dari Materi 3: kalau ada file baru, hapus gambar lama lalu simpan baru
+    if ($request->hasFile('image')) {
+        if ($product->image && Storage::disk('public')->exists($product->image)) {
+            Storage::disk('public')->delete($product->image);
+        }
+        $validated['image'] = $request->file('image')->store('products', 'public');
+    }
+
     $product->update($validated);
 
-    return redirect()->route('products.index')
-                     ->with('success', 'Produk berhasil diperbarui.');
+    return redirect('/products/' . $product->id)->with('success', 'Produk berhasil diperbarui.');
 }
 ```
 
-### Penjelasan Aturan Validasi
+### Penjelasan Aturan Validasi `category_id`
 
 ```php
 'category_id' => 'required|exists:categories,id',
@@ -138,37 +169,58 @@ Kenapa penting? Kalau user "iseng" kirim `category_id=99` lewat manipulasi form,
 
 ## Langkah 3: Tambah Dropdown di Form Create
 
-Buka file `resources/views/products/create.blade.php`. Tambahkan dropdown kategori di dalam form:
+Buka file `resources/views/products/create.blade.php`. Form ini sudah berisi
+field `name`, `price`, `stock`, `description`, `image` dari materi sebelumnya.
+Kita **tambah satu field baru**: dropdown kategori.
 
 ```blade
-<form action="{{ route('products.store') }}" method="POST">
+<form action="/products" method="POST" enctype="multipart/form-data">
     @csrf
 
-    <label>Nama Produk:</label>
-    <input type="text" name="name" value="{{ old('name') }}">
-    @error('name') <span style="color: red;">{{ $message }}</span> @enderror
-    <br>
+    <div class="form-group">
+        <label for="name">Nama Produk</label>
+        <input type="text" name="name" id="name" value="{{ old('name') }}">
+        @error('name') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
 
-    <label>Harga:</label>
-    <input type="number" name="price" value="{{ old('price') }}">
-    @error('price') <span style="color: red;">{{ $message }}</span> @enderror
-    <br>
+    <div class="form-group">
+        <label for="price">Harga (Rp)</label>
+        <input type="number" name="price" id="price" min="0" value="{{ old('price') }}">
+        @error('price') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
 
-    <label>Kategori:</label>
-    <select name="category_id">
-        <option value="">-- Pilih Kategori --</option>
-        @foreach ($categories as $category)
-            <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>
-                {{ $category->name }}
-            </option>
-        @endforeach
-    </select>
-    @error('category_id') <span style="color: red;">{{ $message }}</span> @enderror
-    <br>
+    <div class="form-group">
+        <label for="stock">Stok</label>
+        <input type="number" name="stock" id="stock" min="0" value="{{ old('stock') }}">
+        @error('stock') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
 
-    <label>Deskripsi:</label>
-    <textarea name="description">{{ old('description') }}</textarea>
-    <br>
+    {{-- FIELD BARU: dropdown kategori --}}
+    <div class="form-group">
+        <label for="category_id">Kategori</label>
+        <select name="category_id" id="category_id">
+            <option value="">-- Pilih Kategori --</option>
+            @foreach ($categories as $category)
+                <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>
+                    {{ $category->name }}
+                </option>
+            @endforeach
+        </select>
+        @error('category_id') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="form-group">
+        <label for="description">Deskripsi</label>
+        <textarea name="description" id="description">{{ old('description') }}</textarea>
+        @error('description') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
+
+    {{-- Field dari Materi 3 (upload gambar) --}}
+    <div class="form-group">
+        <label for="image">Gambar Produk</label>
+        <input type="file" name="image" id="image">
+        @error('image') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
 
     <button type="submit">Simpan</button>
 </form>
@@ -217,36 +269,53 @@ Contoh: user pilih "Pakaian" lalu submit, tapi nama produk kosong. Validasi gaga
 Buka file `resources/views/products/edit.blade.php`. Hampir sama, tapi nilai defaultnya diambil dari `$product->category_id`:
 
 ```blade
-<form action="{{ route('products.update', $product) }}" method="POST">
+<form action="/products/{{ $product->id }}" method="POST" enctype="multipart/form-data">
     @csrf
     @method('PUT')
 
-    <label>Nama Produk:</label>
-    <input type="text" name="name" value="{{ old('name', $product->name) }}">
-    @error('name') <span style="color: red;">{{ $message }}</span> @enderror
-    <br>
+    <div class="form-group">
+        <label for="name">Nama Produk</label>
+        <input type="text" name="name" id="name" value="{{ old('name', $product->name) }}">
+        @error('name') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
 
-    <label>Harga:</label>
-    <input type="number" name="price" value="{{ old('price', $product->price) }}">
-    @error('price') <span style="color: red;">{{ $message }}</span> @enderror
-    <br>
+    <div class="form-group">
+        <label for="price">Harga (Rp)</label>
+        <input type="number" name="price" id="price" min="0" value="{{ old('price', $product->price) }}">
+        @error('price') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
 
-    <label>Kategori:</label>
-    <select name="category_id">
-        <option value="">-- Pilih Kategori --</option>
-        @foreach ($categories as $category)
-            <option value="{{ $category->id }}"
-                @selected(old('category_id', $product->category_id) == $category->id)>
-                {{ $category->name }}
-            </option>
-        @endforeach
-    </select>
-    @error('category_id') <span style="color: red;">{{ $message }}</span> @enderror
-    <br>
+    <div class="form-group">
+        <label for="stock">Stok</label>
+        <input type="number" name="stock" id="stock" min="0" value="{{ old('stock', $product->stock) }}">
+        @error('stock') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
 
-    <label>Deskripsi:</label>
-    <textarea name="description">{{ old('description', $product->description) }}</textarea>
-    <br>
+    <div class="form-group">
+        <label for="category_id">Kategori</label>
+        <select name="category_id" id="category_id">
+            <option value="">-- Pilih Kategori --</option>
+            @foreach ($categories as $category)
+                <option value="{{ $category->id }}"
+                    @selected(old('category_id', $product->category_id) == $category->id)>
+                    {{ $category->name }}
+                </option>
+            @endforeach
+        </select>
+        @error('category_id') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="form-group">
+        <label for="description">Deskripsi</label>
+        <textarea name="description" id="description">{{ old('description', $product->description) }}</textarea>
+        @error('description') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="form-group">
+        <label for="image">Gambar Produk</label>
+        <input type="file" name="image" id="image">
+        @error('image') <span style="color: red;">{{ $message }}</span> @enderror
+    </div>
 
     <button type="submit">Update</button>
 </form>
@@ -256,7 +325,7 @@ Buka file `resources/views/products/edit.blade.php`. Hampir sama, tapi nilai def
 
 | Bagian                       | Create                           | Edit                                                |
 |------------------------------|----------------------------------|-----------------------------------------------------|
-| `action`                     | `route('products.store')`        | `route('products.update', $product)`                |
+| `action`                     | `action="/products"`             | `action="/products/{{ $product->id }}"`             |
 | `@method`                    | Tidak perlu (POST default)       | `@method('PUT')`                                    |
 | `value` input                | `old('name')`                    | `old('name', $product->name)`                       |
 | Default dropdown             | `old('category_id')`             | `old('category_id', $product->category_id)`         |

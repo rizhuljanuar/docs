@@ -49,31 +49,42 @@ Buka file:
 routes/web.php
 ```
 
-Pastikan ada **route resource** atau **route individual** untuk CRUD
-produk. Cara paling umum di Laravel:
+Pastikan ada **route individual** (seperti yang kamu tulis di **Materi 1,
+Tahap 5 dan Tahap 6**) untuk CRUD produk:
 
 ```php
-use App\Http\Controllers\ProductController;
+<?php
+
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductController;
 
-Route::resource('products', ProductController::class);
+Route::get('/', function () {
+    return 'Selamat datang di Toko Produk';
+});
+
+// Route produk diarahkan ke ProductController
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/create', [ProductController::class, 'create']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::get('/products/{id}/edit', [ProductController::class, 'edit']);
+Route::put('/products/{id}', [ProductController::class, 'update']);
+Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+Route::get('/products/{id}', [ProductController::class, 'show']);
 ```
-
-**Arti `Route::resource`**: Laravel otomatis bikin **7 route** sekaligus:
-
-| Method HTTP | URL                  | Method Controller | Fungsi               |
-|-------------|----------------------|-------------------|----------------------|
-| GET         | `/products`          | `index()`         | Lihat daftar produk  |
-| GET         | `/products/create`   | `create()`        | Form tambah          |
-| POST        | `/products`          | `store()`         | Simpan produk baru   |
-| GET         | `/products/{id}`     | `show()`          | Detail satu produk   |
-| GET         | `/products/{id}/edit`| `edit()`          | Form edit            |
-| PUT/PATCH   | `/products/{id}`     | `update()`        | Update produk        |
-| DELETE      | `/products/{id}`     | `destroy()`       | Hapus produk         |
 
 > Yang penting bagi validasi: **POST ke `/products`** (jalankan
 > `store()`) dan **PUT ke `/products/{id}`** (jalankan `update()`).
 > Keduanya harus memakai `StoreProductRequest`.
+
+**Alternatif lebih singkat**: Kalau mau, kamu boleh mengganti 7 route
+di atas dengan satu baris `Route::resource`:
+
+```php
+Route::resource('products', ProductController::class);
+```
+
+Ini otomatis bikin **7 route** yang sama. Tapi untuk konsistensi
+dengan **Materi 1**, kita tetap pakai route individual.
 
 **Cara cek route aktif**: jalankan di terminal:
 
@@ -98,7 +109,7 @@ app/
 │   └── Requests/
 │       └── StoreProductRequest.php      ← aturan validasi
 routes/
-└── web.php                              ← route resource products
+└── web.php                              ← route produk (individual atau resource)
 resources/
 └── views/
     └── products/
@@ -113,7 +124,9 @@ resources/
 ## 4. Kode Lengkap ProductController.php
 
 Berikut **versi lengkap dan final** dari controller produk setelah
-semua integrasi selesai:
+semua integrasi selesai. Ini adalah kelanjutan dari **Materi 1: CRUD
+Data Produk**, jadi struktur route, model binding, dan redirect
+tetap konsisten dengan apa yang sudah kamu buat sebelumnya.
 
 ```php
 <?php
@@ -122,27 +135,26 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
 use App\Models\Product;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 class ProductController extends Controller
 {
     // Tampilkan daftar produk
-    public function index(): View
+    public function index()
     {
-        $products = Product::latest()->get();
+        $products = Product::all();
+
         return view('products.index', compact('products'));
     }
 
     // Tampilkan form tambah produk
-    public function create(): View
+    public function create()
     {
         return view('products.create');
     }
 
     // Simpan produk baru
-    public function store(StoreProductRequest $request): RedirectResponse
+    public function store(StoreProductRequest $request)
     {
         Product::create($request->validated());
 
@@ -151,29 +163,35 @@ class ProductController extends Controller
     }
 
     // Tampilkan detail produk
-    public function show(Product $product): View
+    public function show($id)
     {
+        $product = Product::findOrFail($id);
+
         return view('products.show', compact('product'));
     }
 
     // Tampilkan form edit produk
-    public function edit(Product $product): View
+    public function edit($id)
     {
+        $product = Product::findOrFail($id);
+
         return view('products.edit', compact('product'));
     }
 
     // Update produk
-    public function update(StoreProductRequest $request, Product $product): RedirectResponse
+    public function update(StoreProductRequest $request, $id)
     {
+        $product = Product::findOrFail($id);
         $product->update($request->validated());
 
-        return redirect('/products')
-            ->with('success', 'Produk berhasil diupdate.');
+        return redirect('/products/' . $product->id)
+            ->with('success', 'Produk berhasil diperbarui.');
     }
 
     // Hapus produk
-    public function destroy(Product $product): RedirectResponse
+    public function destroy($id)
     {
+        $product = Product::findOrFail($id);
         $product->delete();
 
         return redirect('/products')
@@ -186,18 +204,21 @@ class ProductController extends Controller
 
 1. **`use App\Http\Requests\StoreProductRequest;`** di atas file:
    import class FormRequest.
-2. **`store(StoreProductRequest $request)`** dan **`update(StoreProductRequest $request, Product $product)`**:
+2. **`store(StoreProductRequest $request)`** dan **`update(StoreProductRequest $request, $id)`**:
    Kedua method ini **memakai tipe yang sama** (StoreProductRequest),
    jadi aturan validasi dijalankan **otomatis** sebelum isi methodnya.
 3. **`$request->validated()`**: Ambil hanya field yang sudah lolos
    validasi (lebih aman dari `$request->all()`).
-4. **Route model binding**: Pakai `Product $product` di parameter
-   (bukan `$id`) → Laravel otomatis ambil produk berdasarkan ID di
-   URL. Ini lebih rapi daripada `Product::findOrFail($id)`.
+4. **Struktur konsisten dengan Materi 1**: Method `show`, `edit`,
+   `update`, dan `destroy` tetap memakai parameter `$id` (bukan route
+   model binding `Product $product`), sama seperti yang kamu tulis di
+   **Materi 1 (Tahap 6, 10, 11, 12, 13)**.
+5. **Redirect update tetap ke detail produk** (`/products/{id}`),
+   sama seperti **Materi 1 (Tahap 12)**.
 
-> Kalau controller kamu sebelumnya pakai `$id` (bukan route model
-> binding), tidak masalah. Tinggal sesuaikan. Yang penting
-> `StoreProductRequest` dipakai di `store()` dan `update()`.
+> Kalau nanti kamu mau refactor ke route model binding (`Product $product`),
+   itu boleh. Tapi untuk konsistensi dengan materi sebelumnya, kita
+   tetap pakai `$id`.
 
 ---
 
@@ -222,10 +243,10 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nama'      => 'required',
-            'harga'     => 'required|numeric|min:0',
-            'stok'      => 'required|integer|min:0',
-            'deskripsi' => 'nullable|min:10',
+            'name'        => 'required|min:3',
+            'price'       => 'required|numeric|min:0',
+            'stock'       => 'required|integer|min:0',
+            'description' => 'nullable|min:10',
         ];
     }
 }
@@ -237,8 +258,10 @@ class StoreProductRequest extends FormRequest
 
 ```blade
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Produk</title>
 </head>
 <body>
@@ -250,9 +273,9 @@ class StoreProductRequest extends FormRequest
 
     {{-- Ringkasan error di atas --}}
     @if ($errors->any())
-        <div style="background-color: #fee; border: 1px solid red; padding: 10px;">
+        <div style="background-color: #f8d7da; color: #721c24; padding: 10px 15px; border: 1px solid #f5c6cb; border-radius: 4px; margin-bottom: 15px;">
             <strong>Maaf, ada masalah:</strong>
-            <ul>
+            <ul style="margin: 5px 0 0 20px;">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -264,33 +287,33 @@ class StoreProductRequest extends FormRequest
         @csrf
 
         <div>
-            <label>Nama Produk:</label><br>
-            <input type="text" name="nama" value="{{ old('nama') }}">
-            @error('nama')
+            <label for="name">Nama Produk</label><br>
+            <input type="text" name="name" id="name" value="{{ old('name') }}">
+            @error('name')
                 <span style="color: red; font-size: 12px;">{{ $message }}</span>
             @enderror
         </div>
 
         <div>
-            <label>Harga:</label><br>
-            <input type="number" name="harga" step="0.01" value="{{ old('harga') }}">
-            @error('harga')
+            <label for="price">Harga (Rp)</label><br>
+            <input type="number" name="price" id="price" min="0" value="{{ old('price') }}">
+            @error('price')
                 <span style="color: red; font-size: 12px;">{{ $message }}</span>
             @enderror
         </div>
 
         <div>
-            <label>Stok:</label><br>
-            <input type="number" name="stok" value="{{ old('stok') }}">
-            @error('stok')
+            <label for="stock">Stok</label><br>
+            <input type="number" name="stock" id="stock" min="0" value="{{ old('stock') }}">
+            @error('stock')
                 <span style="color: red; font-size: 12px;">{{ $message }}</span>
             @enderror
         </div>
 
         <div>
-            <label>Deskripsi:</label><br>
-            <textarea name="deskripsi">{{ old('deskripsi') }}</textarea>
-            @error('deskripsi')
+            <label for="description">Deskripsi</label><br>
+            <textarea name="description" id="description">{{ old('description') }}</textarea>
+            @error('description')
                 <span style="color: red; font-size: 12px;">{{ $message }}</span>
             @enderror
         </div>
@@ -307,21 +330,23 @@ class StoreProductRequest extends FormRequest
 
 ```blade
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Produk</title>
 </head>
 <body>
-    <h1>Edit Produk: {{ $product->nama }}</h1>
+    <h1>Edit Produk: {{ $product->name }}</h1>
 
     <a href="/products">&larr; Kembali ke Daftar Produk</a>
 
     <br><br>
 
     @if ($errors->any())
-        <div style="background-color: #fee; border: 1px solid red; padding: 10px;">
+        <div style="background-color: #f8d7da; color: #721c24; padding: 10px 15px; border: 1px solid #f5c6cb; border-radius: 4px; margin-bottom: 15px;">
             <strong>Maaf, ada masalah:</strong>
-            <ul>
+            <ul style="margin: 5px 0 0 20px;">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -334,33 +359,33 @@ class StoreProductRequest extends FormRequest
         @method('PUT')
 
         <div>
-            <label>Nama Produk:</label><br>
-            <input type="text" name="nama" value="{{ old('nama', $product->nama) }}">
-            @error('nama')
+            <label for="name">Nama Produk</label><br>
+            <input type="text" name="name" id="name" value="{{ old('name', $product->name) }}">
+            @error('name')
                 <span style="color: red; font-size: 12px;">{{ $message }}</span>
             @enderror
         </div>
 
         <div>
-            <label>Harga:</label><br>
-            <input type="number" name="harga" step="0.01" value="{{ old('harga', $product->harga) }}">
-            @error('harga')
+            <label for="price">Harga (Rp)</label><br>
+            <input type="number" name="price" id="price" min="0" value="{{ old('price', $product->price) }}">
+            @error('price')
                 <span style="color: red; font-size: 12px;">{{ $message }}</span>
             @enderror
         </div>
 
         <div>
-            <label>Stok:</label><br>
-            <input type="number" name="stok" value="{{ old('stok', $product->stok) }}">
-            @error('stok')
+            <label for="stock">Stok</label><br>
+            <input type="number" name="stock" id="stock" min="0" value="{{ old('stock', $product->stock) }}">
+            @error('stock')
                 <span style="color: red; font-size: 12px;">{{ $message }}</span>
             @enderror
         </div>
 
         <div>
-            <label>Deskripsi:</label><br>
-            <textarea name="deskripsi">{{ old('deskripsi', $product->deskripsi) }}</textarea>
-            @error('deskripsi')
+            <label for="description">Deskripsi</label><br>
+            <textarea name="description" id="description">{{ old('description', $product->description) }}</textarea>
+            @error('description')
                 <span style="color: red; font-size: 12px;">{{ $message }}</span>
             @enderror
         </div>
@@ -391,10 +416,10 @@ satu. Ini penting untuk memastikan integrasi benar-benar bekerja.
 
 1. Buka `http://localhost:8000/products/create`.
 2. Isi:
-   - nama: `Buku Tulis`
-   - harga: `5000`
-   - stok: `20`
-   - deskripsi: `Buku tulis 50 lembar berkualitas`
+   - name: `Buku Tulis`
+   - price: `5000`
+   - stock: `20`
+   - description: `Buku tulis 50 lembar berkualitas`
 3. Klik **Simpan**.
 
 **Ekspektasi:**
@@ -405,43 +430,43 @@ satu. Ini penting untuk memastikan integrasi benar-benar bekerja.
 
 1. Buka `http://localhost:8000/products/create`.
 2. Isi:
-   - nama: **kosong**
-   - harga: `-5000`
-   - stok: `2.5`
-   - deskripsi: `ok`
+   - name: **kosong**
+   - price: `-5000`
+   - stock: `2.5`
+   - description: `ok`
 3. Klik **Simpan**.
 
 **Ekspektasi:**
 - Halaman **kembali ke form**.
 - Kotak error merah muncul di atas.
 - Pesan error muncul di tiap field yang salah.
-- Field yang sudah kamu isi (misal deskripsi `ok`) tetap ada di
+- Field yang sudah kamu isi (misal description `ok`) tetap ada di
   textarea (karena `old()` bekerja).
 
 ### Skenario C: Edit produk dengan data BENAR
 
 1. Buka halaman edit produk, misal: `http://localhost:8000/products/1/edit`.
 2. Ubah:
-   - harga: `6000` (dari sebelumnya 5000)
+   - price: `6000` (dari sebelumnya 5000)
 3. Klik **Update**.
 
 **Ekspektasi:**
-- Diarahkan ke halaman daftar produk.
+- Diarahkan ke halaman detail produk (`/products/1`), sesuai Materi 1 Tahap 12.
 - Harga produk berubah jadi 6000.
 
 ### Skenario D: Edit produk dengan data SALAH
 
 1. Buka halaman edit produk: `http://localhost:8000/products/1/edit`.
-2. Hapus isi field nama (kosongkan).
-3. Ubah harga jadi `-1000`.
+2. Hapus isi field name (kosongkan).
+3. Ubah price jadi `-1000`.
 4. Klik **Update**.
 
 **Ekspektasi:**
 - Halaman **kembali ke form edit**.
-- Pesan error muncul di field nama dan harga.
-- Field lain (stok, deskripsi) **tetap berisi data dari database**
+- Pesan error muncul di field name dan price.
+- Field lain (stock, description) **tetap berisi data dari database**
   karena tidak kamu ubah.
-- Field yang kamu ubah (nama kosong, harga -1000) tetap ada sebagai
+- Field yang kamu ubah (name kosong, price -1000) tetap ada sebagai
   feedback "inilah yang salah, perbaiki".
 
 ### Skenario E: Coba kirim data ekstra (mass assignment test)
@@ -474,8 +499,11 @@ Kalau ada yang tidak bekerja, cek daftar berikut:
 
 **Kemungkinan penyebab**:
 - Route belum terdaftar. Cek `php artisan route:list --path=products`.
-- Pastikan `Route::resource('products', ProductController::class);`
-  ada di `routes/web.php`.
+- Pastikan route `/products/create` ditulis **sebelum** `/products/{id}`
+  (seperti yang kamu pelajari di **Materi 1, Tahap 5 dan Tahap 8**).
+- Kalau pakai `Route::resource`, pastikan
+  `Route::resource('products', ProductController::class);` ada di
+  `routes/web.php`.
 
 ### Masalah: Error 500 saat submit form
 
@@ -549,15 +577,15 @@ Perbedaannya hanya di URL tujuan (POST ke `/products` vs PUT ke
 
 ## 11. Latihan Mandiri
 
-1. **Tambah field baru**: tambahkan field `kategori` (string) ke tabel
+1. **Tambah field baru**: tambahkan field `category` (string) ke tabel
    products (lewat migration baru). Lalu tambahkan aturan validasi
-   `'kategori' => 'required|in:elektronik,makanan,pakaian'` di
+   `'category' => 'required|in:elektronik,makanan,pakaian'` di
    `StoreProductRequest`. Coba input dengan kategori yang tidak ada
    di daftar. Apa yang terjadi?
 
 2. **Pisahkan FormRequest**: bikin dua FormRequest terpisah,
    `StoreProductRequest` dan `UpdateProductRequest`. Buat aturannya
-   **sedikit beda** (misal di update, nama boleh sama dengan nama
+   **sedikit beda** (misal di update, name boleh sama dengan name
    sebelumnya → rules `unique` ignore ID). Latihan ini mensimulasikan
    kasus nyata.
 
@@ -568,8 +596,8 @@ Perbedaannya hanya di URL tujuan (POST ke `/products` vs PUT ke
    public function messages(): array
    {
        return [
-           'nama.required' => 'Nama produk wajib diisi ya.',
-           'harga.min'     => 'Harga tidak boleh minus.',
+           'name.required'  => 'Nama produk wajib diisi ya.',
+           'price.min'      => 'Harga tidak boleh minus.',
        ];
    }
    ```
@@ -582,7 +610,8 @@ Perbedaannya hanya di URL tujuan (POST ke `/products` vs PUT ke
 
 - **Integrasi penuh** menggabungkan: FormRequest + Controller + Route +
   View menjadi satu sistem yang bekerja.
-- **Route resource** memberi 7 route otomatis untuk CRUD produk.
+- **Route** (individual atau `Route::resource`) mendaftarkan 7 endpoint
+  CRUD produk.
 - **Controller** memakai `StoreProductRequest $request` di method
   `store()` dan `update()` → validasi berjalan otomatis.
 - **Form create** pakai `value="{{ old('field') }}"`.

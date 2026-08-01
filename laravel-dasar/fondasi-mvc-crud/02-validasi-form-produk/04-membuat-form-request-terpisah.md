@@ -148,10 +148,10 @@ Sekarang isi method `rules()` dengan **aturan yang sama** dari Tahap 3:
 public function rules()
 {
     return [
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ];
 }
 ```
@@ -181,10 +181,10 @@ class StoreProductRequest extends FormRequest
     public function rules()
     {
         return [
-            'nama'      => 'required',
-            'harga'     => 'required|numeric|min:0',
-            'stok'      => 'required|integer|min:0',
-            'deskripsi' => 'nullable|min:10',
+            'name'        => 'required|min:3',
+            'price'       => 'required|numeric|min:0',
+            'stock'       => 'required|integer|min:0',
+            'description' => 'nullable|min:10',
         ];
     }
 }
@@ -225,14 +225,14 @@ Fungsinya: Memberi tahu controller "ini, aku mau pakai kelas
 ```php
 public function store(Request $request)
 {
-    $request->validate([
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ]);
 
-    Product::create($request->all());
+    Product::create($validated);
 
     return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
 }
@@ -314,26 +314,27 @@ Ini mencegah serangan yang disebut **mass assignment vulnerability**.
 Method `update()` juga harus pakai FormRequest supaya aturan
 validasi **dipakai ulang** (ingat: ini tujuan utama Cara B).
 
-**Sebelum:**
+**Sebelum (Cara A dari Tahap 3, mengikuti Materi 1 Tahap 12):**
 
 ```php
 public function update(Request $request, $id)
 {
-    $request->validate([
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+    $product = Product::findOrFail($id);
+
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ]);
 
-    $product = Product::findOrFail($id);
-    $product->update($request->all());
+    $product->update($validated);
 
-    return redirect('/products')->with('success', 'Produk berhasil diupdate.');
+    return redirect('/products/' . $product->id)->with('success', 'Produk berhasil diperbarui.');
 }
 ```
 
-**Sesudah:**
+**Sesudah (Cara B sekarang):**
 
 ```php
 public function update(StoreProductRequest $request, $id)
@@ -341,7 +342,7 @@ public function update(StoreProductRequest $request, $id)
     $product = Product::findOrFail($id);
     $product->update($request->validated());
 
-    return redirect('/products')->with('success', 'Produk berhasil diupdate.');
+    return redirect('/products/' . $product->id)->with('success', 'Produk berhasil diperbarui.');
 }
 ```
 
@@ -358,35 +359,36 @@ pendek dan bersih**.
 ```php
 public function store(Request $request)
 {
-    $request->validate([
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ]);
 
-    Product::create($request->all());
+    Product::create($validated);
 
     return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
 }
 
 public function update(Request $request, $id)
 {
-    $request->validate([
-        'nama'      => 'required',
-        'harga'     => 'required|numeric|min:0',
-        'stok'      => 'required|integer|min:0',
-        'deskripsi' => 'nullable|min:10',
+    $product = Product::findOrFail($id);
+
+    $validated = $request->validate([
+        'name'        => 'required|min:3',
+        'price'       => 'required|numeric|min:0',
+        'stock'       => 'required|integer|min:0',
+        'description' => 'nullable|min:10',
     ]);
 
-    $product = Product::findOrFail($id);
-    $product->update($request->all());
+    $product->update($validated);
 
-    return redirect('/products')->with('success', 'Produk berhasil diupdate.');
+    return redirect('/products/' . $product->id)->with('success', 'Produk berhasil diperbarui.');
 }
 ```
 
-**Aturan ditulis 2x.** Kalau mau ubah aturan harga, harus ubah di
+**Aturan ditulis 2x.** Kalau mau ubah aturan price, harus ubah di
 2 tempat. Berisiko lupa.
 
 ### Sesudah (Cara B, sekarang)
@@ -404,7 +406,7 @@ public function update(StoreProductRequest $request, $id)
     $product = Product::findOrFail($id);
     $product->update($request->validated());
 
-    return redirect('/products')->with('success', 'Produk berhasil diupdate.');
+    return redirect('/products/' . $product->id)->with('success', 'Produk berhasil diperbarui.');
 }
 ```
 
@@ -452,10 +454,10 @@ practice** Laravel untuk aplikasi nyata.
 ## 12. Latihan Mandiri
 
 1. **Coba ubah aturan** di `StoreProductRequest.php`. Misalnya ubah
-   `min:0` jadi `min:1000` di harga. Lalu coba input harga `500`.
+   `min:0` jadi `min:1000` di price. Lalu coba input price `500`.
    Apa yang terjadi? (Harus ditolak karena di bawah 1000.)
-2. **Coba hapus field** `'nama' => 'required'` di `rules()`. Lalu coba
-   input nama kosong. Apa yang terjadi? (Harus lolos padahal seharusnya
+2. **Coba hapus field** `'name' => 'required|min:3'` di `rules()`. Lalu coba
+   input name kosong. Apa yang terjadi? (Harus lolos padahal seharusnya
    wajib.)
 3. **Coba komentar sementara** pemanggilan `use App\Http\Requests\StoreProductRequest;`
    di controller. Apa error yang muncul? (Class not found.)

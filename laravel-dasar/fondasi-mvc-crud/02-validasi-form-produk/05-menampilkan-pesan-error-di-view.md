@@ -63,9 +63,9 @@ Beberapa method penting yang sering dipakai di Blade:
 |---------------------------|---------------------------------------------------|
 | `$errors->any()`          | Apakah ada **satu pun** error? (true/false)       |
 | `$errors->all()`          | Ambil **semua** pesan error sebagai array.        |
-| `$errors->has('nama')`    | Apakah ada **error untuk field nama**?            |
-| `$errors->first('nama')`  | Ambil **pesan error pertama** untuk field nama.   |
-| `$errors->get('nama')`    | Ambil **semua pesan** error untuk field nama.     |
+| `$errors->has('name')`    | Apakah ada **error untuk field name**?            |
+| `$errors->first('name')`  | Ambil **pesan error pertama** untuk field name.   |
+| `$errors->get('name')`    | Ambil **semua pesan** error untuk field name.     |
 
 Kita akan pakai method-method ini di form.
 
@@ -77,7 +77,7 @@ Selain `$errors`, Laravel juga menyediakan **input lama user** di
 variabel global bernama `old()`.
 
 ```blade
-{{ old('nama') }}
+{{ old('name') }}
 ```
 
 **Fungsinya**: Mengambil **nilai yang sudah user ketik sebelumnya**
@@ -153,105 +153,115 @@ poin** (bullet list).
 Daftar error di atas sudah cukup baik, tapi lebih enak kalau user
 **langsung lihat** error di **samping field yang salah**.
 
-Mari kita kembangkan form kamu. Contoh form awal yang sederhana
-(sebelum validasi):
+Mari kita kembangkan form kamu. Form yang sudah dibuat di **Materi 1
+(Tahap 8)** bentuknya kira-kira seperti ini (sebelum validasi):
 
 ```blade
 <form action="/products" method="POST">
     @csrf
 
-    <label>Nama Produk:</label>
-    <input type="text" name="nama">
+    <div class="form-group">
+        <label for="name">Nama Produk</label>
+        <input type="text" name="name" id="name">
+    </div>
 
-    <label>Harga:</label>
-    <input type="number" name="harga" step="0.01">
+    <div class="form-group">
+        <label for="price">Harga (Rp)</label>
+        <input type="number" name="price" id="price" min="0">
+    </div>
 
-    <label>Stok:</label>
-    <input type="number" name="stok">
+    <div class="form-group">
+        <label for="stock">Stok</label>
+        <input type="number" name="stock" id="stock" min="0">
+    </div>
 
-    <label>Deskripsi:</label>
-    <textarea name="deskripsi"></textarea>
+    <div class="form-group">
+        <label for="description">Deskripsi</label>
+        <textarea name="description" id="description"></textarea>
+    </div>
 
     <button type="submit">Simpan</button>
 </form>
 ```
 
-Sekarang kita ubah **field nama** untuk menampilkan error + mempertahankan
+Sekarang kita ubah **field name** untuk menampilkan error + mempertahankan
 input lama:
 
 ```blade
-<label>Nama Produk:</label>
-<input type="text" name="nama" value="{{ old('nama') }}">
+<div class="form-group">
+    <label for="name">Nama Produk</label>
+    <input type="text" name="name" id="name" value="{{ old('name') }}">
 
-@error('nama')
-    <span style="color: red; font-size: 12px;">
-        {{ $message }}
-    </span>
-@enderror
+    @error('name')
+        <span style="color: red; font-size: 12px;">
+            {{ $message }}
+        </span>
+    @enderror
+</div>
 ```
 
 ### Penjelasan per baris
 
 ```blade
-<input type="text" name="nama" value="{{ old('nama') }}">
+<input type="text" name="name" id="name" value="{{ old('name') }}">
 ```
 **Artinya**: Isi value input dengan **nilai lama user**. Kalau user
 sebelumnya input "Buku", nilai "Buku" akan tetap muncul saat form
 reload. Kalau tidak ada old input (misal user baru pertama kali
-buka form), `old('nama')` akan kosong.
+buka form), `old('name')` akan kosong.
 
 ```blade
-@error('nama')
+@error('name')
     <span style="color: red;">{{ $message }}</span>
 @enderror
 ```
-**Artinya**: Direktif Blade `@error('nama')` mengecek apakah ada
-error untuk field `nama`. Kalau ada, jalankan bloknya. Variabel
+**Artinya**: Direktif Blade `@error('name')` mengecek apakah ada
+error untuk field `name`. Kalau ada, jalankan bloknya. Variabel
 `$message` sudah otomatis berisi **pesan error untuk field itu**.
 
 ---
 
 ## 6. Langkah 3: Terapkan Pola yang Sama ke Semua Field
 
-Setelah berhasil di field `nama`, terapkan pola yang sama ke
-`harga`, `stok`, dan `deskripsi`. Berikut form lengkapnya:
+Setelah berhasil di field `name`, terapkan pola yang sama ke
+`price`, `stock`, dan `description`. Berikut form lengkapnya:
 
 ```blade
 <form action="/products" method="POST">
     @csrf
 
-    {{-- Field NAMA --}}
-    <div>
-        <label>Nama Produk:</label>
-        <input type="text" name="nama" value="{{ old('nama') }}">
-        @error('nama')
+    {{-- Field NAME --}}
+    <div class="form-group">
+        <label for="name">Nama Produk</label>
+        <input type="text" name="name" id="name" value="{{ old('name') }}">
+        @error('name')
             <span style="color: red; font-size: 12px;">{{ $message }}</span>
         @enderror
     </div>
 
-    {{-- Field HARGA --}}
-    <div>
-        <label>Harga:</label>
-        <input type="number" name="harga" step="0.01" value="{{ old('harga') }}">
-        @error('harga')
+    {{-- Field PRICE --}}
+    <div class="form-group">
+        <label for="price">Harga (Rp)</label>
+        <input type="number" name="price" id="price" min="0" value="{{ old('price') }}">
+        @error('price')
             <span style="color: red; font-size: 12px;">{{ $message }}</span>
         @enderror
     </div>
 
-    {{-- Field STOK --}}
-    <div>
-        <label>Stok:</label>
-        <input type="number" name="stok" value="{{ old('stok') }}">
-        @error('stok')
+    {{-- Field STOCK --}}
+    <div class="form-group">
+        <label for="stock">Stok</label>
+        <input type="number" name="stock" id="stock" min="0" value="{{ old('stock') }}">
+        @error('stock')
             <span style="color: red; font-size: 12px;">{{ $message }}</span>
         @enderror
     </div>
 
-    {{-- Field DESKRIPSI --}}
-    <div>
-        <label>Deskripsi:</label>
-        <textarea name="deskripsi">{{ old('deskripsi') }}</textarea>
-        @error('deskripsi')
+    {{-- Field DESCRIPTION --}}
+    <div class="form-group">
+        <label for="description">Deskripsi</label>
+        <textarea name="description" id="description">{{ old('description') }}</textarea>
+        @error('description')
             <span style="color: red; font-size: 12px;">{{ $message }}</span>
         @enderror
     </div>
@@ -262,11 +272,11 @@ Setelah berhasil di field `nama`, terapkan pola yang sama ke
 
 ### Catatan khusus untuk `<textarea>`
 
-Perhatikan di field `deskripsi`, nilai `old()` diletakkan **di antara
+Perhatikan di field `description`, nilai `old()` diletakkan **di antara
 tag pembuka dan penutup textarea**, **bukan** di atribut `value=`:
 
 ```blade
-<textarea name="deskripsi">{{ old('deskripsi') }}</textarea>
+<textarea name="description">{{ old('description') }}</textarea>
 ```
 
 Ini karena tag `<textarea>` **tidak punya atribut `value`**. Nilainya
@@ -289,11 +299,11 @@ ada input lama (karena validasi gagal), pakai input lama.
 Caranya pakai **operator null coalescing** `??`:
 
 ```blade
-<input type="text" name="nama" value="{{ old('nama', $product->nama) }}">
+<input type="text" name="name" value="{{ old('name', $product->name) }}">
 ```
 
-**Artinya**: Pakai `old('nama')` kalau ada (validasi gagal). Kalau
-tidak ada, pakai `$product->nama` (data dari database).
+**Artinya**: Pakai `old('name')` kalau ada (validasi gagal). Kalau
+tidak ada, pakai `$product->name` (data dari database).
 
 Berikut form edit lengkap:
 
@@ -302,34 +312,34 @@ Berikut form edit lengkap:
     @csrf
     @method('PUT')
 
-    <div>
-        <label>Nama Produk:</label>
-        <input type="text" name="nama" value="{{ old('nama', $product->nama) }}">
-        @error('nama')
+    <div class="form-group">
+        <label for="name">Nama Produk</label>
+        <input type="text" name="name" id="name" value="{{ old('name', $product->name) }}">
+        @error('name')
             <span style="color: red; font-size: 12px;">{{ $message }}</span>
         @enderror
     </div>
 
-    <div>
-        <label>Harga:</label>
-        <input type="number" name="harga" step="0.01" value="{{ old('harga', $product->harga) }}">
-        @error('harga')
+    <div class="form-group">
+        <label for="price">Harga (Rp)</label>
+        <input type="number" name="price" id="price" min="0" value="{{ old('price', $product->price) }}">
+        @error('price')
             <span style="color: red; font-size: 12px;">{{ $message }}</span>
         @enderror
     </div>
 
-    <div>
-        <label>Stok:</label>
-        <input type="number" name="stok" value="{{ old('stok', $product->stok) }}">
-        @error('stok')
+    <div class="form-group">
+        <label for="stock">Stok</label>
+        <input type="number" name="stock" id="stock" min="0" value="{{ old('stock', $product->stock) }}">
+        @error('stock')
             <span style="color: red; font-size: 12px;">{{ $message }}</span>
         @enderror
     </div>
 
-    <div>
-        <label>Deskripsi:</label>
-        <textarea name="deskripsi">{{ old('deskripsi', $product->deskripsi) }}</textarea>
-        @error('deskripsi')
+    <div class="form-group">
+        <label for="description">Deskripsi</label>
+        <textarea name="description" id="description">{{ old('description', $product->description) }}</textarea>
+        @error('description')
             <span style="color: red; font-size: 12px;">{{ $message }}</span>
         @enderror
     </div>
@@ -339,8 +349,8 @@ Berikut form edit lengkap:
 ```
 
 > **Bedanya `old()` di create vs edit:**
-> - **Create**: `value="{{ old('nama') }}"` → hanya pakai old input.
-> - **Edit**: `value="{{ old('nama', $product->nama) }}"` → pakai old
+> - **Create**: `value="{{ old('name') }}"` → hanya pakai old input.
+> - **Edit**: `value="{{ old('name', $product->name) }}"` → pakai old
 >   input kalau ada, kalau tidak ada pakai data dari database.
 
 ---
@@ -352,30 +362,30 @@ Berikut form edit lengkap:
 1. Pastikan server jalan: `php artisan serve`.
 2. Buka `http://localhost:8000/products/create`.
 3. Isi:
-   - nama: **kosong**
-   - harga: `-5000`
-   - stok: `2.5`
-   - deskripsi: `ok`
+   - name: **kosong**
+   - price: `-5000`
+   - stock: `2.5`
+   - description: `ok`
 4. Klik **Simpan**.
 
 **Yang harus terjadi:**
 - Halaman **kembali ke form**.
 - **Kotak error merah** muncul di atas, berisi daftar error.
 - **Pesan error** muncul di bawah setiap field yang salah:
-  - nama: "The nama field is required."
-  - harga: "The harga must be at least 0."
-  - stok: "The stok must be an integer."
-  - deskripsi: "The deskripsi must be at least 10 characters."
+  - name: "The name field is required."
+  - price: "The price must be at least 0."
+  - stock: "The stock must be an integer."
+  - description: "The description must be at least 10 characters."
 - Input yang sudah benar **tetap ada** (misal kalau kamu input
-  deskripsi "bagus banget banget banget" yang valid, teks itu tetap
-  muncul di textarea karena `old('deskripsi')`).
+  description "bagus banget banget banget" yang valid, teks itu tetap
+  muncul di textarea karena `old('description')`).
 
 ### Uji form edit
 
 1. Buka halaman edit salah satu produk:
    `http://localhost:8000/products/1/edit`.
-2. **Hapus** isi field nama.
-3. Ubah harga jadi `-1000`.
+2. **Hapus** isi field name.
+3. Ubah price jadi `-1000`.
 4. Klik **Update**.
 
 **Yang harus terjadi:**
@@ -384,7 +394,7 @@ Berikut form edit lengkap:
 - **Data produk lain tetap ada** (tidak hilang) karena diambil dari
   `$product->...`.
 - Field yang kamu ubah tetap mempertahankan input terakhir kamu
-  (misal harga yang kamu ketik `-1000` masih terlihat, sebagai sinyal
+  (misal price yang kamu ketik `-1000` masih terlihat, sebagai sinyal
   "yang ini kamu salah ketik, perbaiki").
 
 ---
@@ -398,7 +408,7 @@ pakai CSS eksternal, lebih baik pakai class.
 Contoh (kalau kamu punya file CSS sendiri):
 
 ```blade
-@error('nama')
+@error('name')
     <span class="text-danger error-message">{{ $message }}</span>
 @enderror
 ```
@@ -425,12 +435,12 @@ Bootstrap untuk teks merah. Tidak perlu bikin CSS sendiri.
 
 ## 10. Latihan Mandiri
 
-1. **Hapus `old('nama')`** dari input nama, lalu input data salah.
-   Apa yang terjadi dengan field nama saat form reload?
+1. **Hapus `old('name')`** dari input name, lalu input data salah.
+   Apa yang terjadi dengan field name saat form reload?
    (Harus kosong. Inilah kenapa `old()` penting.)
-2. **Hapus salah satu blok `@error('harga')`** di form, lalu input
-   harga minus. Apa yang terjadi? (Error hanya muncul di daftar atas,
-   tidak muncul di samping field harga.)
+2. **Hapus salah satu blok `@error('price')`** di form, lalu input
+   price minus. Apa yang terjadi? (Error hanya muncul di daftar atas,
+   tidak muncul di samping field price.)
 3. **Coba ubah teks error**: tambahkan `:attribute` atau lihat dokumentasi
    Laravel cara **kustomisasi pesan error**. Ini bonus, tidak wajib.
 
@@ -444,8 +454,8 @@ Bootstrap untuk teks merah. Tidak perlu bikin CSS sendiri.
   - `$errors->any()` dan `$errors->all()` untuk **daftar ringkasan error**.
   - `@error('field') ... @enderror` untuk **error per field**.
   - `old('field')` untuk **mempertahankan input user**.
-- Di **form tambah**: gunakan `value="{{ old('nama') }}"`.
-- Di **form edit**: gunakan `value="{{ old('nama', $product->nama) }}"`
+- Di **form tambah**: gunakan `value="{{ old('name') }}"`.
+- Di **form edit**: gunakan `value="{{ old('name', $product->name) }}"`
   supaya data dari database muncul sebagai default.
 - Untuk `<textarea>`, taruh `old()` **di dalam tag**, bukan di
   atribut `value`.
@@ -473,11 +483,11 @@ A: Bisa keduanya dipakai bersamaan:
 - `@error` per field untuk **detail di samping input**.
 Tidak konflik, justru saling melengkapi.
 
-**Q: Kenapa di form edit pakai `$product->nama` dan bukan langsung
-`old('nama')` saja?**
+**Q: Kenapa di form edit pakai `$product->name` dan bukan langsung
+`old('name')` saja?**
 A: Karena di form edit, kalau user **baru saja membuka halaman**
 (belum submit apapun), tidak ada old input. Form harus tetap
-menampilkan data dari database (`$product->nama`). Operator `??`
+menampilkan data dari database (`$product->name`). Operator `??`
 menangani ini: pakai old kalau ada, kalau tidak pakai data DB.
 
 ---

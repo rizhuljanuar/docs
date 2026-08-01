@@ -37,7 +37,7 @@ Analogi:
 Begitu juga di Laravel. Kode yang sama:
 
 ```php
-Storage::disk('public')->put('produk/sepatu.jpg', $file);
+Storage::disk('public')->put('products/sepatu.jpg', $file);
 ```
 
 bisa dipakai untuk:
@@ -89,8 +89,8 @@ php artisan storage:link
 ```
 
 Cukup **sekali** jalankan ini di setiap instalasi Laravel, dan gambar yang
-disimpan di `storage/app/public/produk/x.jpg` bisa dibuka lewat URL
-`http://toko.test/storage/produk/x.jpg`.
+disimpan di `storage/app/public/products/x.jpg` bisa dibuka lewat URL
+`http://toko.test/storage/products/x.jpg`.
 
 > **Ponytail:** Lihat detail symlink ini di `config/filesystems.php`,
 > bagian `links`. Jangan diubah kecuali tahu apa yang kamu lakukan.
@@ -101,8 +101,8 @@ Fungsi bawaan Laravel untuk **menghasilkan URL publik** dari sebuah file yang
 disimpan di disk. Contoh:
 
 ```php
-Storage::disk('public')->url('produk/sepatu.jpg');
-// hasil: http://toko.test/storage/produk/sepatu.jpg
+Storage::disk('public')->url('products/sepatu.jpg');
+// hasil: http://toko.test/storage/products/sepatu.jpg
 ```
 
 Kenapa pakai ini, bukan nulis URL manual? Karena:
@@ -130,7 +130,7 @@ Kenapa pakai ini, bukan nulis URL manual? Karena:
    [ Storage::disk('public')->put(...) ]    ← simpan ke storage/app/public
             │
             ▼
-   [ Simpan PATH gambar ke database ]        ← contoh: produk/gambar/sepatu.jpg
+   [ Simpan PATH gambar ke database ]        ← contoh: products/gambar/sepatu.jpg
             │
             ▼
    [ Tampilkan di halaman: Storage::url() ]  ← Tahap 4
@@ -169,7 +169,7 @@ File inilah "daftar disk" yang tersedia. Isinya kurang lebih:
 ```
 
 Pemula cukup tahu: **disk `public`** → folder `storage/app/public` → akses via
-`/storage/...`. Sisanya biarkan default.
+`/storage/...` (misal `/storage/products/x.jpg`). Sisanya biarkan default.
 
 ---
 

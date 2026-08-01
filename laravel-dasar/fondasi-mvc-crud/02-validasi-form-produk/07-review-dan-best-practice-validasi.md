@@ -74,8 +74,8 @@ nyata. Simpan sebagai catatan jangka panjang.
 
 | Rule        | Arti                                              | Contoh                |
 |-------------|---------------------------------------------------|-----------------------|
-| `required`  | Wajib diisi (tidak boleh kosong)                 | `'nama' => 'required'`|
-| `nullable`  | Boleh kosong                                       | `'catatan' => 'nullable\|string'` |
+| `required`  | Wajib diisi (tidak boleh kosong)                 | `'name' => 'required'`|
+| `nullable`  | Boleh kosong                                       | `'description' => 'nullable\|string'` |
 | `present`   | Field harus ada di request (boleh kosong)        | `'agree' => 'present'`|
 | `filled`    | Kalau ada, tidak boleh kosong                    | -                     |
 
@@ -116,8 +116,8 @@ nyata. Simpan sebagai catatan jangka panjang.
 
 | Rule                          | Arti                                       |
 |-------------------------------|--------------------------------------------|
-| `unique:products,nama`        | Nilai field harus unik di kolom `nama` tabel `products` |
-| `unique:products,nama,1,id`   | Unik, tapi abaikan baris dengan ID 1 (untuk update) |
+| `unique:products,name`        | Nilai field harus unik di kolom `name` tabel `products` |
+| `unique:products,name,1,id`   | Unik, tapi abaikan baris dengan ID 1 (untuk update) |
 | `exists:categories,id`        | Nilai harus ada di kolom `id` tabel `categories` |
 
 ### Aturan Pilihan
@@ -152,10 +152,10 @@ nyata. Simpan sebagai catatan jangka panjang.
 | `prohibited`    | Tidak boleh diisi                                 |
 
 > **Tip**: Kamu bisa **menggabungkan** beberapa aturan dengan tanda
-> `|`, contoh: `'harga' => 'required|numeric|min:0'`. Atau pakai
+> `|`, contoh: `'price' => 'required|numeric|min:0'`. Atau pakai
 > **array** untuk readability:
 > ```php
-> 'harga' => ['required', 'numeric', 'min:0'],
+> 'price' => ['required', 'numeric', 'min:0'],
 > ```
 
 ---
@@ -185,10 +185,10 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nama'      => 'required',
-            'harga'     => 'required|numeric|min:0',
-            'stok'      => 'required|integer|min:0',
-            'deskripsi' => 'nullable|min:10',
+            'name'        => 'required|min:3',
+            'price'       => 'required|numeric|min:0',
+            'stock'       => 'required|integer|min:0',
+            'description' => 'nullable|min:10',
         ];
     }
 
@@ -196,14 +196,15 @@ class StoreProductRequest extends FormRequest
     {
         return [
             // Pesan untuk aturan spesifik di field spesifik
-            'nama.required'      => 'Nama produk wajib diisi.',
-            'harga.required'     => 'Harga wajib diisi.',
-            'harga.numeric'      => 'Harga harus berupa angka.',
-            'harga.min'          => 'Harga tidak boleh minus.',
-            'stok.required'      => 'Stok wajib diisi.',
-            'stok.integer'       => 'Stok harus bilangan bulat.',
-            'stok.min'           => 'Stok tidak boleh minus.',
-            'deskripsi.min'      => 'Deskripsi minimal 10 karakter.',
+            'name.required'        => 'Nama produk wajib diisi.',
+            'name.min'             => 'Nama produk minimal 3 karakter.',
+            'price.required'       => 'Harga wajib diisi.',
+            'price.numeric'        => 'Harga harus berupa angka.',
+            'price.min'            => 'Harga tidak boleh minus.',
+            'stock.required'       => 'Stok wajib diisi.',
+            'stock.integer'        => 'Stok harus bilangan bulat.',
+            'stock.min'            => 'Stok tidak boleh minus.',
+            'description.min'      => 'Deskripsi minimal 10 karakter.',
         ];
     }
 }
@@ -265,7 +266,7 @@ return [
 ```
 
 **Penjelasan placeholder**:
-- `:attribute` → otomatis diganti jadi nama field (misal "nama").
+- `:attribute` → otomatis diganti jadi nama field (misal "name").
 - `:min`, `:max`, `:value` → otomatis diganti sesuai nilai aturan.
 
 > **Bonus**: Laravel sudah punya **file bahasa Indonesia resmi** di
@@ -289,7 +290,7 @@ return [
 
 ## 4. Custom Nama Attribute (Label yang Lebih Ramah)
 
-Secara default, pesan error menampilkan nama field (`nama`, `harga`).
+Secara default, pesan error menampilkan nama field (`name`, `price`).
 Tapi kamu mungkin ingin tampil sebagai "Nama Produk", "Harga", dll.
 
 Ada **2 cara**:
@@ -300,16 +301,16 @@ Ada **2 cara**:
 public function attributes(): array
 {
     return [
-        'nama'  => 'Nama Produk',
-        'harga' => 'Harga',
-        'stok'  => 'Stok',
-        'deskripsi' => 'Deskripsi',
+        'name'        => 'Nama Produk',
+        'price'       => 'Harga',
+        'stock'       => 'Stok',
+        'description' => 'Deskripsi',
     ];
 }
 ```
 
 Setelah ini, pesan error akan pakai label tersebut:
-"Kolom **Nama Produk** wajib diisi." (bukan "Kolom nama wajib diisi.").
+"Kolom **Nama Produk** wajib diisi." (bukan "Kolom name wajib diisi.").
 
 ### Cara 2: file lang/id/validation.php
 
@@ -317,10 +318,10 @@ Di bagian bawah file `lang/id/validation.php`, ada section `attributes`:
 
 ```php
 'attributes' => [
-    'nama'  => 'Nama Produk',
-    'harga' => 'Harga',
-    'stok'  => 'Stok',
-    'deskripsi' => 'Deskripsi',
+    'name'        => 'Nama Produk',
+    'price'       => 'Harga',
+    'stock'       => 'Stok',
+    'description' => 'Deskripsi',
 ],
 ```
 
@@ -368,14 +369,14 @@ saja.
 
 ### 5.4 Aturan unique di Update: Jangan Lupa Ignore ID
 
-Ini jebakan klasik. Misal kamu punya aturan nama harus unik:
+Ini jebakan klasik. Misal kamu punya aturan name harus unik:
 
 ```php
-'nama' => 'required|unique:products,nama',
+'name' => 'required|unique:products,name',
 ```
 
 Saat **update** produk, produk yang diedit sendiri akan dianggap
-"duplikat" dengan dirinya sendiri → error validasi padahal nama
+"duplikat" dengan dirinya sendiri → error validasi padahal name
 tidak berubah.
 
 Solusi: ignore ID produk yang sedang diupdate:
@@ -387,7 +388,7 @@ public function rules(): array
     $id = $this->route('product')->id; // ambil ID dari route
 
     return [
-        'nama' => 'required|unique:products,nama,' . $id,
+        'name' => 'required|unique:products,name,' . $id,
         // ... aturan lain
     ];
 }
@@ -407,14 +408,15 @@ aplikasi produksi:
 
 ### 5.6 Tambahkan Fillable di Model
 
-Pastikan model `Product` punya `$fillable` agar `$request->validated()`
+Pastikan model `Product` punya `$fillable` (seperti yang sudah kamu
+buat di **Materi 1, Tahap 4**) agar `$request->validated()`
 berfungsi dengan baik:
 
 ```php
 // app/Models/Product.php
 class Product extends Model
 {
-    protected $fillable = ['nama', 'harga', 'stok', 'deskripsi'];
+    protected $fillable = ['name', 'description', 'price', 'stock'];
 }
 ```
 

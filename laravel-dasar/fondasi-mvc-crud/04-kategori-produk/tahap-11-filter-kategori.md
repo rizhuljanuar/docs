@@ -130,9 +130,9 @@ Buka `resources/views/products/index.blade.php`. Tambahkan menu filter di atas t
 <h1>Daftar Produk</h1>
 
 <div class="filter">
-    <a href="{{ route('products.index') }}">Semua</a>
+    <a href="/products">Semua</a>
     @foreach ($categories as $category)
-        <a href="{{ route('products.index', ['category' => $category->id]) }}">
+        <a href="/products?category={{ $category->id }}">
             {{ $category->name }}
         </a>
     @endforeach
@@ -148,7 +148,7 @@ Buka `resources/views/products/index.blade.php`. Tambahkan menu filter di atas t
 #### Link "Semua"
 
 ```blade
-<a href="{{ route('products.index') }}">Semua</a>
+<a href="/products">Semua</a>
 ```
 
 Tanpa parameter -> URL-nya `/products` -> semua produk tampil.
@@ -156,12 +156,12 @@ Tanpa parameter -> URL-nya `/products` -> semua produk tampil.
 #### Link Tiap Kategori
 
 ```blade
-<a href="{{ route('products.index', ['category' => $category->id]) }}">
+<a href="/products?category={{ $category->id }}">
     {{ $category->name }}
 </a>
 ```
 
-`route('products.index', ['category' => $category->id])` menghasilkan URL:
+Link di atas menghasilkan URL:
 
 ```
 /products?category=1      (untuk Elektronik)
@@ -170,18 +170,21 @@ Tanpa parameter -> URL-nya `/products` -> semua produk tampil.
 /products?category=4      (untuk Buku)
 ```
 
+> Catatan: kita pakai URL biasa (`/products?category=...`) supaya konsisten
+> dengan **Materi 1, 2, dan 3** yang tidak memakai named route.
+
 ## Langkah 3: Tandai Filter yang Sedang Aktif (Opsional tapi Bagus)
 
 Supaya user tahu kategori mana yang sedang dipilih, kita bisa **highlight** link aktif:
 
 ```blade
 <div class="filter">
-    <a href="{{ route('products.index') }}"
+    <a href="/products"
        style="{{ request()->missing('category') ? 'font-weight: bold;' : '' }}">
         Semua
     </a>
     @foreach ($categories as $category)
-        <a href="{{ route('products.index', ['category' => $category->id]) }}"
+        <a href="/products?category={{ $category->id }}"
            style="{{ request('category') == $category->id ? 'font-weight: bold;' : '' }}">
             {{ $category->name }}
         </a>
@@ -208,7 +211,7 @@ Tambah info di atas tabel supaya user tahu konteks:
     <p>
         Menampilkan produk kategori:
         <strong>{{ $products->first()?->category?->name ?? 'Tidak ditemukan' }}</strong>
-        - <a href="{{ route('products.index') }}">Tampilkan semua</a>
+        - <a href="/products">Tampilkan semua</a>
     </p>
 @endif
 ```

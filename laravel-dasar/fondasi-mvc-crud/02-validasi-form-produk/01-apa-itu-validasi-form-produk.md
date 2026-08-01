@@ -39,14 +39,15 @@ boleh masuk ke sistem dan apa yang harus ditolak.
 **Validasi form produk** adalah proses **memeriksa data yang dikirim
 user dari form** sebelum data itu disimpan ke database.
 
-Contoh untuk produk kita:
+Contoh untuk produk kita (field `name`, `price`, `stock`, `description`
+yang sudah dibuat di **Materi 1: CRUD Data Produk**):
 
 | Field        | Aturan yang wajar                                  |
 |--------------|----------------------------------------------------|
-| nama produk  | Wajib diisi, tidak boleh kosong                    |
-| harga        | Wajib diisi, harus angka, tidak boleh minus        |
-| stok         | Wajib diisi, harus angka bulat (tidak boleh pecahan)|
-| deskripsi    | Boleh dikosongkan, tapi kalau diisi minimal 10 huruf|
+| `name`       | Wajib diisi, tidak boleh kosong                    |
+| `price`      | Wajib diisi, harus angka, tidak boleh minus        |
+| `stock`      | Wajib diisi, harus angka bulat (tidak boleh pecahan)|
+| `description`| Boleh dikosongkan, tapi kalau diisi minimal 10 huruf|
 
 Aturan-aturan seperti di atas itu yang disebut **rules validasi**
 (aturan validasi).
@@ -79,26 +80,26 @@ Berikut masalah nyata di aplikasi Laravel kamu:
 
 ```php
 $produk = new Product();
-$produk->nama     = $request->nama;     // bisa kosong
-$produk->harga    = $request->harga;    // bisa null
-$produk->stok     = $request->stok;
-$produk->deskripsi = $request->deskripsi;
+$produk->name        = $request->name;        // bisa kosong
+$produk->price       = $request->price;       // bisa null
+$produk->stock       = $request->stock;
+$produk->description = $request->description;
 $produk->save();
 ```
 
 Tanpa validasi, kode di atas **tetap jalan**. Database tetap menerima
-`nama = null` dan `harga = null`. Halaman daftar produk nanti bakal
+`name = null` dan `price = null`. Halaman daftar produk nanti bakal
 penuh dengan baris yang **nama dan harganya kosong**.
 
 #### 2. Harga negatif membuat laporan keuangan salah
 
-Kalau user input `harga = -10000`, laporan penjualan kamu jadi kacau.
+Kalau user input `price = -10000`, laporan penjualan kamu jadi kacau.
 Total pendapatan jadi negatif. Ini bug serius yang susah dilacak
 kalau sudah menumpuk.
 
 #### 3. Tipe data salah bisa error saat ditampilkan
 
-Misal user input `harga = "mahal"` (string). Saat halaman ingin
+Misal user input `price = "mahal"` (string). Saat halaman ingin
 menampilkan `Rp "mahal"` atau menghitung total, aplikasi bisa
 **error 500** atau menampilkan tulisan aneh.
 

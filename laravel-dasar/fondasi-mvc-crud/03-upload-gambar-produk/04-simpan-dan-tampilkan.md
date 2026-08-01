@@ -34,19 +34,50 @@ diakses dari browser meskipun filenya ada.
 
 ---
 
-## 3. Migration: Tambah Kolom `gambar` ke Tabel Produk
+## 3. Migration: Tambah Kolom `image` ke Tabel `products`
 
-Pastikan tabel `produk` punya kolom untuk menyimpan path gambar.
+Tabel `products` sudah kamu buat di **Materi 1 (Tahap 3)** dengan kolom:
+`id`, `name`, `description`, `price`, `stock`, `created_at`, `updated_at`.
 
-`database/migrations/xxxx_create_produk_table.php`:
+Sekarang kita **tambah satu kolom baru**: `image`, untuk menyimpan path gambar.
+
+Karena tabelnya sudah ada, kita tidak membuat migration `create`, tapi
+migration **`add_column`**. Jalankan perintah berikut di terminal:
+
+```bash
+php artisan make:migration add_image_to_products_table --table=products
+```
+
+Tanda `--table=products` memberitahu Laravel bahwa migration ini untuk
+**mengubah tabel yang sudah ada** (bukan membuat tabel baru).
+
+Buka file migration baru itu di `database/migrations/` dan isi seperti ini:
 
 ```php
-Schema::create('produk', function (Blueprint $table) {
-    $table->id();
-    $table->string('nama', 100);
-    $table->string('gambar')->nullable();   // path gambar, boleh kosong
-    $table->timestamps();
-});
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('products', function (Blueprint $table) {
+            // Kolom baru untuk menyimpan PATH gambar (bukan file-nya).
+            // nullable() supaya produk yang sudah ada tidak error saat kolom ini ditambahkan.
+            $table->string('image')->nullable()->after('description');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('products', function (Blueprint $table) {
+            $table->dropColumn('image');
+        });
+    }
+};
 ```
 
 Jalankan migration:
@@ -55,71 +86,134 @@ Jalankan migration:
 php artisan migrate
 ```
 
-Kenapa `nullable()`? Supaya produk bisa disimpan dulu tanpa gambar, gambar
-bisa ditambahkan nanti (opsional, sesuai kebutuhan toko).
+### Penjelasan penting
 
-> **Catatan penting:** tipe kolomnya `string` (path teks), **bukan** `binary`
-> atau `blob`. Kita menyimpan **lokasi file**, bukan isi file.
+- **`Schema::table`** (bukan `Schema::create`) karena kita mengubah tabel yang
+  sudah ada, bukan membuat tabel baru. Ini beda dengan **Materi 1 (Tahap 3)**
+  yang memakai `Schema::create` karena tabelnya belum ada.
+- **`->nullable()`** supaya produk lama (yang sudah disimpan tanpa gambar)
+  tidak error saat kolom `image` ditambahkan ke tabel.
+- **`->after('description')`** opsional, hanya untuk mengatur urutan kolom
+  di phpMyAdmin supaya rapi. Boleh dihapus.
+- **Tipe kolom `string`** (path teks), **bukan** `binary` atau `blob`.
+  Kita menyimpan **lokasi file**, bukan isi file.
+
+> Bandingkan dengan **Materi 1 (Tahap 3)**: di sana kamu membuat tabel dari
+> nol dengan `Schema::create`. Sekarang kamu **mengubah** tabel yang sudah
+> ada dengan `Schema::table`. Inilah cara Laravel mengelola perubahan database
+> secara bertahap tanpa menghapus data lama.
 
 ---
 
-## 4. Controller: Simpan File + Path ke Database
+## 4. Update Model Product: Tambah `image` ke `$fillable`
 
-`app/Http/Controllers/ProdukController.php`:
+Buka `app/Models/Product.php` (yang sudah kamu buat di **Materi 1, Tahap 4**).
+Tambahkan `image` ke daftar `$fillable`:
 
 ```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Product extends Model
+{
+    protected $fillable = [
+        'name',
+        'description',
+        'price',
+        'stock',
+
+        // TAMBAHAN BARU:
+        'image',
+    ];
+}
+```
+
+Tanpa mendaftarkan `image` di `$fillable`, `Product::create()` akan
+**mengabaikan** field `image` karena fitur keamanan mass assignment Laravel.
+
+---
+
+## 5. Controller: Simpan File + Path ke Database
+
+Buka `app/Http/Controllers/ProductController.php` yang sudah kamu buat di
+**Materi 1** dan diperbaiki di **Materi 2**. Kita ubah method `store()` agar
+menangani upload file, dan tambahkan import facade `Storage`.
+
+```php
+<?php
+
 namespace App\Http\Controllers;
 
-use App\Models\Produk;
+use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Storage;  // TAMBAHAN: untuk upload file
 
-class ProdukController extends Controller
+class ProductController extends Controller
 {
     public function create()
     {
-        return view('produk.create');
+        return view('products.create');
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'nama'   => ['required', 'string', 'max:100'],
-            'gambar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        $validated = $request->validate([
+            'name'        => ['required', 'min:3'],
+            'price'       => ['required', 'numeric', 'min:0'],
+            'stock'       => ['required', 'integer', 'min:0'],
+            'description' => ['nullable', 'min:10'],
+
+            // TAMBAHAN untuk upload gambar:
+            'image'       => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        // 1. Simpan file ke disk 'public', folder 'produk'
-        $path = $request->file('gambar')->store('produk', 'public');
-        // contoh hasil $path: "produk/XYZabcsepatu.jpg"
+        // 1. Simpan file ke disk 'public', subfolder 'products'
+        $path = $request->file('image')->store('products', 'public');
+        // contoh hasil $path: "products/aB3xK9pQ.jpg"
 
-        // 2. Simpan data ke database (path-nya saja, bukan file)
-        Produk::create([
-            'nama'   => $data['nama'],
-            'gambar' => $path,
-        ]);
+        // 2. Tambahkan path gambar ke array validated, lalu simpan ke database
+        $validated['image'] = $path;
 
-        return redirect()->route('produk.index')->with('success', 'Produk ditambahkan.');
+        Product::create($validated);
+
+        return redirect('/products')->with('success', 'Produk berhasil ditambahkan.');
     }
 }
 ```
 
-### Penjelasan `$request->file('gambar')->store('produk', 'public')`:
+### Penjelasan perubahan dari materi sebelumnya
 
-- `file('gambar')` → ambil instance `UploadedFile` dari input bernama `gambar`.
-- `->store('produk', 'public')` → simpan ke disk `public`, di subfolder `produk`.
+1. **`use Illuminate\Support\Facades\Storage;`** ditambahkan di bagian import.
+   Kita baru membutuhkannya sekarang karena sebelumnya tidak ada upload file.
+2. **Aturan validasi** untuk `name`, `price`, `stock`, `description` tetap sama
+   seperti **Materi 2**. Hanya ditambah satu baris baru: `'image' => [...]`.
+3. **`$request->file('image')->store('products', 'public')`** menyimpan file
+   gambar ke storage.
+4. **`$validated['image'] = $path;`** menambahkan path gambar ke array
+   `$validated` sebelum disimpan ke database. Cara ini aman karena kita tetap
+   memakai `Product::create($validated)` (mass assignment lewat `$fillable`).
+
+### Penjelasan `$request->file('image')->store('products', 'public')`:
+
+- `file('image')` → ambil instance `UploadedFile` dari input bernama `image`.
+- `->store('products', 'public')` → simpan ke disk `public`, di subfolder
+  `products`.
 - Laravel otomatis membuat nama file unik (terenkripsi) supaya tidak tabrakan
-  dengan file lama, contoh: `produk/aB3xK9pQ.jpg`.
+  dengan file lama, contoh: `products/aB3xK9pQ.jpg`.
 - Fungsi ini **mengembalikan path relatif** terhadap disk, misalnya
-  `"produk/aB3xK9pQ.jpg"`. Path inilah yang disimpan ke database.
+  `"products/aB3xK9pQ.jpg"`. Path inilah yang disimpan ke database.
 
-### Alternatif: `putFileAs` (nama yang kita tentukan)
+### Alternatif: `storeAs` (nama yang kita tentukan)
 
 Kalau mau nama file mengikuti nama asli / bisa dibaca manusia:
 
 ```php
-$namaFile = time() . '-' . $request->file('gambar')->getClientOriginalName();
-$path = $request->file('gambar')->storeAs('produk', $namaFile, 'public');
-// contoh: "produk/1718000000-sepatu-lari.jpg"
+$namaFile = time() . '-' . $request->file('image')->getClientOriginalName();
+$path = $request->file('image')->storeAs('products', $namaFile, 'public');
+// contoh: "products/1718000000-sepatu-lari.jpg"
 ```
 
 Untuk pemula, **`store()` saja sudah cukup** (lebih aman, anti tabrakan).
@@ -128,123 +222,172 @@ Untuk pemula, **`store()` saja sudah cukup** (lebih aman, anti tabrakan).
 
 ---
 
-## 5. Blade: Menampilkan Gambar di Halaman Daftar Produk
+## 6. Blade: Menampilkan Gambar di Halaman Daftar Produk
 
-`resources/views/produk/index.blade.php`:
+Buka `resources/views/products/index.blade.php` yang sudah kamu buat di
+**Materi 1 (Tahap 7 dan Tahap 9)**. Tambahkan kolom **Gambar** di tabel daftar
+produk, atau tampilkan gambar di atas nama produk.
 
-```php
-@if (session('success'))
-    <div style="background:#e0f7e0; padding:8px;">
-        {{ session('success') }}
-    </div>
+Contoh versi sederhana (hanya bagian yang ditambahkan):
+
+```blade
+@use('Illuminate\Support\Facades\Storage')
+
+<!-- ... kode header dan pesan sukses tetap seperti Materi 1 ... -->
+
+@if ($products->isEmpty())
+    <p>Belum ada produk.</p>
+@else
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Gambar</th>      {{-- TAMBAHAN: kolom baru --}}
+                <th>Nama</th>
+                <th>Deskripsi</th>
+                <th>Harga</th>
+                <th>Stok</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($products as $product)
+                <tr>
+                    <td>{{ $product->id }}</td>
+
+                    {{-- TAMBAHAN: tampilkan gambar kalau ada --}}
+                    <td>
+                        @if ($product->image)
+                            <img src="{{ Storage::url($product->image) }}"
+                                 alt="{{ $product->name }}"
+                                 width="100">
+                        @else
+                            <em>(Tidak ada gambar)</em>
+                        @endif
+                    </td>
+
+                    <td>{{ $product->name }}</td>
+                    <td>{{ $product->description }}</td>
+                    <td>Rp {{ number_format($product->price, 0, ',', '.') }}</td>
+                    <td>{{ $product->stock }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
 @endif
-
-@foreach ($produks as $produk)
-    <div style="border:1px solid #ccc; padding:8px; margin:8px 0;">
-        <h3>{{ $produk->nama }}</h3>
-
-        @if ($produk->gambar)
-            <img src="{{ Storage::url($produk->gambar) }}"
-                 alt="{{ $produk->nama }}"
-                 width="200">
-        @else
-            <p><em>(Tidak ada gambar)</em></p>
-        @endif
-    </div>
-@endforeach
 ```
 
 Hal penting:
 
-- `Storage::url($produk->gambar)` → menghasilkan URL publik, contoh:
-  `http://toko.test/storage/produk/aB3xK9pQ.jpg`.
-- Blade butuh directive `@if` karena `gambar` bisa `null` (di tahap migration
-  tadi kita set `nullable()`).
+- `Storage::url($product->image)` → menghasilkan URL publik, contoh:
+  `http://toko.test/storage/products/aB3xK9pQ.jpg`.
+- Blade butuh directive `@if` karena `image` bisa `null` (di migration tadi
+  kita set `nullable()`).
 - Gunakan `{{ ... }}` (double curly) supaya path di-escape (aman dari XSS).
-
-Jangan lupa import facade `Storage` di atas file Blade **jika** perlu
-(dibeberapa versi Blade otomatis resolve). Aman dengan menambah:
-
-```php
-@use('Illuminate\Support\Facades\Storage')
-```
+- `@use('Illuminate\Support\Facades\Storage')` di atas file Blade diperlukan
+  supaya facade `Storage` dikenali. (Di beberapa versi Blade ini otomatis, tapi
+  lebih aman tulis eksplisit.)
 
 ---
 
-## 6. Route (Untuk Kelengkapan)
+## 7. Route (Tetap Sama Seperti Materi 1)
 
-`routes/web.php`:
+Route untuk CRUD produk sudah kamu buat di **Materi 1 (Tahap 5 dan Tahap 6)**.
+Kita **tidak perlu menambah route baru** karena upload gambar memakai route
+yang sudah ada (`POST /products`).
+
+`routes/web.php` tetap seperti ini:
 
 ```php
-use App\Http\Controllers\ProdukController;
+<?php
 
-Route::get('/produk',           [ProdukController::class, 'index'])->name('produk.index');
-Route::get('/produk/create',    [ProdukController::class, 'create'])->name('produk.create');
-Route::post('/produk',          [ProdukController::class, 'store'])->name('produk.store');
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductController;
+
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/create', [ProductController::class, 'create']);
+Route::post('/products', [ProductController::class, 'store']);  // dipakai juga untuk upload
+Route::get('/products/{id}/edit', [ProductController::class, 'edit']);
+Route::put('/products/{id}', [ProductController::class, 'update']);
+Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+Route::get('/products/{id}', [ProductController::class, 'show']);
 ```
+
+> Yang penting: route `Route::post('/products', ...)` menangani **semua** data
+> dari form tambah produk, termasuk file gambar (karena form memakai
+> `enctype="multipart/form-data"`).
 
 ---
 
-## 7. Alur Lengkap dari Upload ke Tampil
+## 8. Alur Lengkap dari Upload ke Tampil
 
 ```
 1. User pilih sepatu.png, klik Simpan
        │
-2. POST /produk  (dengan multipart/form-data)
+2. POST /products  (dengan multipart/form-data)
        │
-3. Controller->store()
+3. ProductController->store()
        │
-       ├─ validate()      → cek image, mimes, max:2048
+       ├─ validate()      → cek name, price, stock, description,
+       │                     dan image (rule image, mimes, max:2048)
        │
-       ├─ ->store('produk','public')
-       │     └─ file masuk: storage/app/public/produk/aB3xK9pQ.jpg
+       ├─ ->store('products','public')
+       │     └─ file masuk: storage/app/public/products/aB3xK9pQ.jpg
        │
-       ├─ Produk::create(['gambar' => 'produk/aB3xK9pQ.jpg', ...])
-       │     └─ path masuk DB
+       ├─ $validated['image'] = 'products/aB3xK9pQ.jpg'
+       ├─ Product::create($validated)
+       │     └─ path masuk DB (kolom image)
        │
-       └─ redirect ke /produk
+       └─ redirect ke /products
               │
-4. Halaman index.blade.php
+4. Halaman products/index.blade.php
        │
-       └─ <img src="{{ Storage::url('produk/aB3xK9pQ.jpg') }}">
-              └─ browser request: /storage/produk/aB3xK9pQ.jpg
+       └─ <img src="{{ Storage::url('products/aB3xK9pQ.jpg') }}">
+              └─ browser request: /storage/products/aB3xK9pQ.jpg
                   └─ symlink public/storage → storage/app/public
                   └─ gambar muncul di browser ✅
 ```
 
 ---
 
-## 8. Cek Masalah Umum (Troubleshooting)
+## 9. Cek Masalah Umum (Troubleshooting)
 
 | Gejala                                     | Penyebab                                | Solusi                                  |
 | ------------------------------------------ | --------------------------------------- | --------------------------------------- |
 | Gambar tidak muncul (404)                  | Belum jalankan `storage:link`           | `php artisan storage:link`              |
-| Gambar broken, padahal filenya ada         | Salah disk / path                       | Pastikan `store('produk', 'public')`    |
+| Gambar broken, padahal filenya ada         | Salah disk / path                       | Pastikan `store('products', 'public')`  |
 | Error "disk public does not exist"         | Konfigurasi `config/filesystems.php`    | Cek disk `public` masih ada             |
-| Upload gagal besar (>2MB) padahal belum 2MB| Batas `upload_max_filesize` di `php.ini` | Ubah `php.ini`,重启 PHP                |
+| Upload gagal besar (>2MB) padahal belum 2MB| Batas `upload_max_filesize` di `php.ini` | Ubah `php.ini`, restart PHP             |
 | Error `Storage::url` not found di Blade    | Lupa import facade                      | Pakai `@use` atau `\Storage::url(...)`   |
+| Kolom `image` tidak tersimpan di DB        | `image` belum didaftarkan di `$fillable` | Tambahkan `'image'` ke `$fillable` di Model |
 
 ---
 
-## 9. Ringkasan Tahap 4
+## 10. Ringkasan Tahap 4
 
-- Migration: kolom `gambar` tipe **string** (path), `nullable()`.
-- Simpan file: `$file->store('produk', 'public')` → kembalikan path relatif.
-- Simpan ke DB: path saja, bukan file.
-- Tampilkan: `{{ Storage::url($produk->gambar) }}` di tag `<img>`.
-- Symlink: jalankan **sekali** `php artisan storage:link`.
-- Cek `@if ($produk->gambar)` sebelum tampilkan (karena bisa null).
+- **Migration**: pakai `Schema::table` (bukan `create`) untuk **menambah**
+  kolom `image` ke tabel `products` yang sudah ada. Kolom tipe **string**
+  (path), `nullable()`.
+- **Model `Product`**: tambahkan `'image'` ke `$fillable`.
+- **Simpan file**: `$file->store('products', 'public')` → kembalikan path
+  relatif, lalu masukkan ke `$validated['image']` sebelum `Product::create()`.
+- **Simpan ke DB**: path saja, bukan file.
+- **Tampilkan**: `{{ Storage::url($product->image) }}` di tag `<img>`.
+- **Symlink**: jalankan **sekali** `php artisan storage:link`.
+- **Cek `@if ($product->image)`** sebelum tampilkan (karena bisa null).
+- **Route tidak berubah** dari Materi 1; upload memakai `POST /products`
+  yang sudah ada.
 
 Sekarang upload gambar produk sudah berfungsi end-to-end!
 
 ---
 
-## 10. Cek Pemahaman
+## 11. Cek Pemahaman
 
-1. Apa yang dikembalikan oleh `$file->store('produk', 'public')`?
-2. Apa yang disimpan di kolom `gambar` di database: file atau path?
-3. Kenapa harus ada `@if ($produk->gambar)` sebelum tampilkan `<img>`?
-4. Bagaimana cara menghasilkan URL publik dari path yang tersimpan?
+1. Apa yang dikembalikan oleh `$file->store('products', 'public')`?
+2. Apa yang disimpan di kolom `image` di database: file atau path?
+3. Kenapa harus ada `@if ($product->image)` sebelum tampilkan `<img>`?
+4. Kenapa migration di materi ini memakai `Schema::table`, bukan `Schema::create`
+   seperti di Materi 1?
 
 ---
 
