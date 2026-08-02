@@ -74,7 +74,7 @@ Buka file migration yang baru dibuat. Ubah method `up()` dan `down()` menjadi:
 public function up(): void
 {
     Schema::table('products', function (Blueprint $table) {
-        $table->string('slug')->nullable()->after('name');
+        $table->string('slug')->nullable();
     });
 }
 
@@ -114,19 +114,11 @@ sepatu-lari-pria
 Ini diperlukan karena produk lama mungkin sudah ada di database, tetapi belum
 memiliki slug. Pada tahap berikutnya kita akan mengisi slug tersebut.
 
-### `->after('name')`
+### Urutan Kolom Tidak Penting
 
-Bagian ini menempatkan kolom `slug` setelah kolom `name` agar struktur tabel
-lebih mudah dibaca.
-
-Urutannya menjadi:
-
-```text
-id, name, slug, description, price, stock, ...
-```
-
-`after('name')` hanya mengatur posisi kolom. Bagian ini tidak memengaruhi cara
-slug bekerja.
+Migration ini tidak mengatur posisi fisik kolom. Urutan kolom tidak memengaruhi
+cara Laravel menyimpan, mencari, atau menampilkan slug. Pendekatan ini tetap
+kompatibel pada database yang didukung Laravel, bukan hanya MySQL.
 
 ### Method `down()`
 

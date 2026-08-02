@@ -2,110 +2,44 @@
 
 ## Apa Itu Halaman Detail Produk?
 
-**Halaman detail produk** adalah halaman yang menampilkan informasi tentang
-satu produk secara lebih lengkap.
+**Halaman detail produk** menampilkan informasi lengkap untuk satu produk, misalnya nama, gambar, harga, stok, deskripsi, dan kategori.
 
-Misalnya, halaman daftar produk menampilkan banyak produk sekaligus:
+Pada daftar produk, pengguna dapat melihat banyak produk. Saat memilih satu produk, pengguna membuka halaman khusus untuk produk tersebut.
 
-- Kaos Hitam
-- Sepatu Lari
-- Tas Sekolah
+## URL Produk dengan ID
 
-Ketika pengguna memilih **Sepatu Lari**, website membuka halaman khusus yang
-berisi nama, gambar, harga, stok, dan deskripsi Sepatu Lari. Itulah halaman
-detail produk.
-
-## Apa Itu URL Produk?
-
-**URL produk** adalah alamat yang digunakan browser untuk membuka halaman
-suatu produk.
-
-Contohnya:
+Sebelumnya, halaman detail dapat memakai ID:
 
 ```text
-/produk/1
+/products/1
 ```
 
-Alamat tersebut berarti website diminta membuka halaman produk dengan ID `1`.
-
-## Kenapa `/produk/1` Kurang Jelas?
-
-Angka `1` berguna bagi database untuk mengenali produk, tetapi kurang berguna
-bagi manusia.
-
-Saat melihat `/produk/1`, kita tidak langsung tahu:
-
-- Produk apa yang akan dibuka.
-- Apakah produknya kaos, sepatu, atau tas.
-- Apakah tautan tersebut sesuai dengan yang sedang dicari.
-
-Alamat itu bekerja dengan benar, tetapi belum mudah dipahami.
+ID sangat berguna untuk database, tetapi angka tersebut tidak menjelaskan produk yang akan dibuka.
 
 ## Apa Itu Slug?
 
-**Slug** adalah bagian URL yang berasal dari nama produk dan ditulis dalam
-bentuk sederhana.
-
-Contohnya:
+**Slug** adalah teks URL sederhana yang dibuat dari nama produk.
 
 ```text
-Nama produk: Sepatu Lari Pria
-Slug:        sepatu-lari-pria
-URL:         /produk/sepatu-lari-pria
+Name: Sepatu Lari Pria
+Slug: sepatu-lari-pria-15
+URL:  /products/sepatu-lari-pria-15
 ```
 
-Slug biasanya memakai:
+Slug biasanya memakai huruf kecil dan tanda hubung sebagai pengganti spasi. URL ini lebih mudah dibaca oleh pengguna dan mesin pencari.
 
-- Huruf kecil.
-- Tanda hubung sebagai pengganti spasi.
-- Kata-kata yang menggambarkan isi halaman.
+## Analogi Sederhana
 
-## Kenapa Slug Lebih Mudah Dibaca?
-
-Bandingkan dua URL berikut:
-
-```text
-/produk/1
-/produk/sepatu-lari-pria
-```
-
-Pada URL pertama, kita hanya melihat angka `1`.
-
-Pada URL kedua, kita langsung tahu bahwa halaman tersebut membahas
-**Sepatu Lari Pria**. URL menjadi lebih jelas bagi pengguna dan mesin pencari.
-Karena itu, URL dengan slug sering disebut **SEO-friendly**.
-
-## Analogi Sederhana: Nomor Rumah dan Papan Nama
-
-Bayangkan ada dua toko:
-
-- Toko pertama hanya memiliki tanda **Nomor 1**.
-- Toko kedua memiliki papan nama **Toko Sepatu Lari**.
-
-Keduanya bisa ditemukan, tetapi papan nama lebih mudah dikenali dan diingat.
-
-Dalam URL:
-
-- ID seperti `1` mirip nomor toko.
-- Slug seperti `sepatu-lari-pria` mirip papan nama toko.
-
-Database tetap dapat mengenali produk, sedangkan pengguna mendapatkan alamat
-yang lebih bermakna.
+ID seperti nomor toko, sedangkan slug seperti papan nama toko. Database tetap mengenali produk melalui data yang tersimpan, sementara pengguna mendapat alamat yang bermakna.
 
 ## Inti Tahap 1
 
-> Halaman detail menampilkan satu produk. URL adalah alamat halamannya. Slug
-> membuat alamat tersebut lebih jelas karena memakai kata yang menggambarkan
-> produk, bukan hanya angka.
+> Halaman detail menampilkan satu produk. Kita akan mengganti URL detail dari `/products/{id}` menjadi `/products/{slug}` tanpa mengubah URL edit dan hapus yang tetap memakai ID.
 
-Pada tahap ini kita baru memahami konsepnya. Kita belum mengubah database,
-route, model, controller, atau menulis kode Laravel.
+Pada tahap berikutnya kita menyiapkan kolom `slug` pada tabel `products`.
 
 ---
 
 ## Pertanyaan Lanjutan
 
-Apakah kamu ingin lanjut ke **Tahap 2: merencanakan kolom slug pada tabel
-products**?
-
-Ketik **"lanjut"** jika sudah siap.
+Apakah kamu ingin lanjut ke **Tahap 2: menambahkan kolom slug pada tabel products**?

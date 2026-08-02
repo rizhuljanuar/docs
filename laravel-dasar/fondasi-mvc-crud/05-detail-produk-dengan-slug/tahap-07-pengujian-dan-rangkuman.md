@@ -225,7 +225,7 @@ View menampilkan detail produk
 Migration pertama menambahkan kolom:
 
 ```php
-$table->string('slug')->nullable()->after('name');
+$table->string('slug')->nullable();
 ```
 
 Migration berikutnya menjaga nilai slug tetap unik:
@@ -325,5 +325,18 @@ Perubahan akhirnya:
 Sebelum: /products/15
 Sesudah: /products/sepatu-lari-pria-15
 ```
+
+## Handoff untuk Materi Pencarian Produk
+
+Materi berikutnya melanjutkan kontrak akhir ini: modelnya `Product`,
+controllernya `ProductController`, tabelnya `products`, dan halaman daftar
+berada di `resources/views/products/index.blade.php` dengan variabel
+`$products`. Field produk adalah `name`, `price`, `stock`, `description`,
+`category_id`, `image`, dan `slug`; relasi kategori tetap `category()`.
+
+Route produk tetap dideklarasikan satu per satu. Detail memakai
+`/products/{{ $product->slug }}`, sedangkan edit dan hapus tetap memakai ID.
+Materi pencarian akan menambahkan pencarian `name`/`description`, filter
+`category_id`, kategori dari model `Category`, dan pagination.
 
 Materi **Detail Produk dengan Slug** selesai.

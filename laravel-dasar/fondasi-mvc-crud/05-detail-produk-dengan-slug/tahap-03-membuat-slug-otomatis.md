@@ -187,10 +187,15 @@ php artisan tinker
 Kemudian jalankan:
 
 ```php
-\App\Models\Product::whereNull('slug')->get()->each(function ($product) {
-    $product->slug = \Illuminate\Support\Str::slug($product->name);
-    $product->save();
-});
+\App\Models\Product::query()
+    ->where(function ($query) {
+        $query->whereNull('slug')->orWhere('slug', '');
+    })
+    ->get()
+    ->each(function ($product) {
+        $product->slug = \Illuminate\Support\Str::slug($product->name);
+        $product->save();
+    });
 ```
 
 Perintah tersebut akan mengambil produk yang slug-nya kosong, membuat slug

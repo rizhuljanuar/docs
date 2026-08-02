@@ -28,7 +28,7 @@ Jika slug dipakai sebagai alamat, Laravel harus dapat menemukan tepat satu
 produk. Slug yang sama membuat alamat menjadi membingungkan:
 
 ```text
-/produk/kaos-hitam
+/products/kaos-hitam
 ```
 
 Laravel tidak tahu apakah alamat tersebut mengarah ke produk ID `7` atau ID
@@ -84,6 +84,8 @@ app/Http/Controllers/ProductController.php
 Pastikan import `Str` dari Tahap 3 masih ada:
 
 ```php
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 ```
 
@@ -176,7 +178,7 @@ public function update(Request $request, $id)
 
     $product->update($validated);
 
-    return redirect('/products/' . $product->id)->with('success', 'Produk berhasil diperbarui.');
+    return redirect('/products/' . $product->slug)->with('success', 'Produk berhasil diperbarui.');
 }
 ```
 

@@ -97,18 +97,19 @@ use App\Http\Controllers\CategoryController;
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/create', [ProductController::class, 'create']);
 Route::post('/products', [ProductController::class, 'store']);
-Route::get('/products/{slug}', [ProductController::class, 'show']);
 Route::get('/products/{id}/edit', [ProductController::class, 'edit']);
 Route::put('/products/{id}', [ProductController::class, 'update']);
 Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+Route::get('/products/{slug}', [ProductController::class, 'show']);
 
 // Route kategori (dari Materi 4)
 Route::resource('categories', CategoryController::class);
 ```
 
-> **Urutan route penting!** `/products/create` harus ditulis **sebelum**
-> `/products/{slug}`. Kalau tidak, Laravel menganggap kata `create` sebagai
-> nilai slug. Ini sudah kamu pelajari di **Materi 1 (Tahap 5)**.
+> **Urutan route penting!** `/products/create` dan route edit sengaja ditulis
+> **sebelum** route detail `/products/{slug}`. Dengan susunan dari yang paling
+> spesifik ke yang lebih umum ini, route yang memiliki segmen tetap mudah
+> dibaca dan dipelihara; `create` juga tidak akan dianggap sebagai slug.
 
 ## Langkah 2: Mengubah Method `show()`
 
