@@ -1,6 +1,6 @@
 # Tahap 7 — Link Mode pada Component yang Sama
 
-Navigasi memakai `<a>`; submit form memakai `<button>`. Evolusikan component yang sama, tanpa API button-link kedua:
+Navigasi memakai `<a>`; submit form memakai `<button>`. Evolusikan component **yang sama**, bukan API component link kedua:
 
 ```blade
 @props(['variant' => 'primary', 'href' => null])
@@ -21,15 +21,21 @@ Navigasi memakai `<a>`; submit form memakai `<button>`. Evolusikan component yan
 @endif
 ```
 
-`except('href')` mencegah href ganda. Jangan memberikan `href` kepada submit button: jika ada `href`, component menjadi link dan form tidak dikirim.
+`except('href')` mencegah atribut `href` tampil dua kali. Jangan pernah memberi `href` kepada submit button; jika ada `href`, component menjadi link dan tidak mengirim form.
+
+## Contoh literal URL
 
 ```blade
 <x-button variant="primary" href="/products/create">Add product</x-button>
 <x-button variant="info" href="/products/{{ $product->slug }}">Detail</x-button>
 <x-button variant="warning" href="/products/{{ $product->id }}/edit">Edit</x-button>
 <x-button variant="secondary" href="/products">Cancel</x-button>
+```
 
+Submit tetap tanpa `href`:
+
+```blade
 <x-button type="submit" variant="primary">Save product</x-button>
 ```
 
-`<x-button-delete>` tetap menggunakan nested `<x-button type="submit" variant="danger">` tanpa link mode.
+`<x-button-delete>` tetap memakai `<x-button type="submit" variant="danger">`; ia tidak memakai link mode.
